@@ -4,6 +4,8 @@ Website zu den Loxone-Klimadaten im Google Sheet „loxone_climate“: Ist- und 
 aller Räume als Hausschnitt, Verlauf je Raum, Heatmaps für Soll-Abweichung, Luftfeuchte und
 Ventilöffnung. Funktioniert auf Handy und PC, hell und dunkel.
 
+**Live:** <https://danielstammler.github.io/raumklima/>
+
 ## Dateien
 
 | Datei | Zweck |
@@ -22,7 +24,7 @@ python3 build.py --snapshot   # dist/artifact.html mit aktuellem Datenstand
 
 ## Öffentlich bereitstellen
 
-`docs/index.html` ist eine einzelne statische Datei ohne Server-Logik. Sie läuft über GitHub Pages (Branch `main`, Ordner `/docs`); jeder andere statische Hoster genügt ebenso:
+`docs/index.html` ist eine einzelne statische Datei ohne Server-Logik. Sie läuft über GitHub Pages (Branch `main`, Ordner `/docs`). Nach einer Änderung `python3 build.py` ausführen, committen und pushen; GitHub veröffentlicht sie nach etwa einer Minute. Jeder andere statische Hoster genügt ebenso:
 
 - **Netlify Drop**: den Ordner `docs` auf <https://app.netlify.com/drop> ziehen.
 - **Cloudflare Pages**, **Vercel** o. ä. funktionieren genauso.

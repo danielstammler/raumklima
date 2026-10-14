@@ -70,6 +70,7 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
 .top h1 { font-size: 30px; line-height: 1.05; }
 @media (min-width: 760px) { .top h1 { font-size: 38px; } }
 .top .sub { color: var(--ink-2); margin-top: 4px; }
+.status a { color: var(--ink); text-underline-offset: 2px; }
 .status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; color: var(--ink-2); font-size: 14px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--hair); font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; }
 .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
@@ -731,6 +732,10 @@ window.RK_CONFIG = {"mode": "live"};
     if (CFG.mode === 'snapshot') {
       chip.classList.add('snap'); label.textContent = 'Momentaufnahme';
       text.textContent = 'Stand ' + fDayTime(m.latest) + ' · fester Datenstand';
+      if (CFG.liveUrl) {
+        text.appendChild(document.createTextNode(' · '));
+        text.appendChild(el('a', { href: CFG.liveUrl, target: '_blank', rel: 'noopener' }, 'Live-Version öffnen'));
+      }
     } else if (age > 75 * 6e4) {
       chip.classList.add('stale'); label.textContent = 'Keine neuen Werte';
       text.textContent = 'Letzter Messwert ' + fDayTime(m.latest) + ' (' + relAge(age) + ')';

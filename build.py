@@ -13,6 +13,7 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SHEET_ID = '1PRRNewgk2MVyh_9-VGFao4YBhNLhzdvUvgcVphER0yg'
+LIVE_URL = 'https://danielstammler.github.io/raumklima/'
 
 # Gleiche Spaltenauswahl wie SPEC in src/page.html
 TABLES = {
@@ -64,7 +65,7 @@ def build(snapshot):
         }
         blob = json.dumps(data, ensure_ascii=False, separators=(',', ':')).replace('<', '\\u003c')
         page = page.replace('<!--@@SNAPSHOT@@-->', f'<script type="application/json" id="rk-snapshot">{blob}</script>')
-        page = page.replace('/*@@CONFIG@@*/', 'window.RK_CONFIG = {"mode": "snapshot"};')
+        page = page.replace('/*@@CONFIG@@*/', 'window.RK_CONFIG = ' + json.dumps({'mode': 'snapshot', 'liveUrl': LIVE_URL}) + ';')
         out = ROOT / 'dist' / 'artifact.html'
         rows = {k: v.count('\n') for k, v in data['tables'].items()}
         print('Datenstand eingebettet:', ', '.join(f'{k} {n}' for k, n in rows.items()))
