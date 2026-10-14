@@ -148,6 +148,7 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
 .seqscale i.closed { width: 22px; }
 .key { display: inline-block; width: 16px; height: 0; border-top: 2px solid currentColor; vertical-align: middle; margin-right: 6px; }
 .key.dash { border-top-style: dashed; }
+.key.dot { border-top-style: dotted; border-top-width: 3px; }
 
 /* Verlauf */
 .detail-select { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -247,7 +248,7 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
     <div class="card-head">
       <div>
         <h2 id="detail-h">Verlauf je Raum</h2>
-        <p class="desc">Temperatur, Außentemperatur, Luftfeuchte und Ventilöffnung auf einer gemeinsamen Zeitachse. Antippen oder darüberfahren zeigt die Werte zu einem Zeitpunkt.</p>
+        <p class="desc">Temperatur, Ventilöffnung, Luftfeuchte und Außentemperatur auf einer gemeinsamen Zeitachse. Antippen oder darüberfahren zeigt die Werte zu einem Zeitpunkt.</p>
       </div>
       <div class="card-tools">
         <label class="detail-select"><span class="muted">Raum</span><select class="select" id="room-select" aria-label="Raum wählen"></select></label>
@@ -960,6 +961,24 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
     if (i < 0 || t - s.t[i] > maxGap) return { i: -1, v: null };
     return { i: i, v: s[key][i] };
   }
+  var DASH = ['', '6 4', '2 3'], DASH_KEY = ['', 'dash', 'dot'];
+  function valveMean(valves) { // Mittel der Stellantriebe je Zeitpunkt
+    var vm = new Map();
+    valves.forEach(function (a) { for (var i = 0; i < a.s.t.length; i++) { if (a.s.v[i] == null) continue; var e = vm.get(a.s.t[i]); if (!e) vm.set(a.s.t[i], e = [0, 0]); e[0] += a.s.v[i]; e[1]++; } });
+    var rows = []; vm.forEach(function (e, t) { rows.push({ t: t, v: e[0] / e[1] }); });
+    return series(rows, ['v']);
+  }
+  function valvesAgree(valves, dom) { // sind alle Stellantriebe eines Raums gleich weit geöffnet?
+    var res = { same: true, n: 0 };
+    if (valves.length < 2) return res;
+    var maps = valves.map(function (a) { var mp = new Map(); for (var i = 0; i < a.s.t.length; i++) if (a.s.t[i] >= dom[0] && a.s.v[i] != null) mp.set(a.s.t[i], a.s.v[i]); return mp; });
+    maps[0].forEach(function (v, t) {
+      var all = true;
+      for (var k = 1; k < maps.length; k++) { var w = maps[k].get(t); if (w == null) { all = false; continue; } if (Math.abs(w - v) > 0.05) res.same = false; }
+      if (all) res.n++;
+    });
+    return res;
+  }
   function renderDetail(m) {
     var host = $('detail-chart'); clear(host);
     var room = m.byUuid.get(state.room);
@@ -967,26 +986,28 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
     var dom = m.domain, W = host.clientWidth || 600, mobile = W < 560;
     var M = { l: 38, r: 12 };
     var x = d3.scaleLinear().domain(dom).range([M.l, W - M.r]);
-    var valveSeries = room.valves;
-    var vs = { t: [], v: [] };
-    if (valveSeries.length) { // Mittel der Stellantriebe je Zeitpunkt
-      var vm = new Map();
-      valveSeries.forEach(function (a) { for (var i = 0; i < a.s.t.length; i++) { if (a.s.v[i] == null) continue; var e = vm.get(a.s.t[i]); if (!e) vm.set(a.s.t[i], e = [0, 0]); e[0] += a.s.v[i]; e[1]++; } });
-      var rows = []; vm.forEach(function (e, t) { rows.push({ t: t, v: e[0] / e[1] }); });
-      vs = series(rows, ['v']);
-    }
+    var valves = room.valves, vs = valves.length ? valveMean(valves) : { t: [], v: [] };
+    var split = valves.length > 1 && !valvesAgree(valves, dom).same; // nur bei Abweichungen einzeln zeichnen
     var gapT = gapLimit(room.s), gapH = gapLimit(room.h), gapV = gapLimit(vs), gapO = Math.max(gapLimit(m.outdoor), 2 * 36e5);
     var small = mobile ? 78 : 88;
     var panels = [
       { key: 'temp', h: mobile ? 190 : 230 },
-      { key: 'out', h: small },
+      { key: 'valve', h: mobile ? 86 : 100 },
       { key: 'hum', h: small },
-      { key: 'valve', h: small, axis: true }
+      { key: 'out', h: small, axis: true }
     ];
     var ticks = timeTicks(dom[0], dom[1], Math.max(3, Math.floor((W - M.l - M.r) / (mobile ? 72 : 96))));
     var cross = [], heads = {};
     function note(svg, top, bottom, text) { svg.appendChild(sv('text', { x: (M.l + W) / 2, y: (top + bottom) / 2 + 4, 'text-anchor': 'middle' }, text)); }
     function collect(s, key, out) { var k = inDomain(s, dom); for (var i = k[0]; i < k[1]; i++) if (s.t[i] >= dom[0] && s[key][i] != null) out.push(s[key][i]); return out; }
+    function startMark(svg, s, top, bottom) { // Bereich vor Beginn der Aufzeichnung kennzeichnen
+      var f = -1; for (var i = 0; i < s.t.length; i++) if (s.v[i] != null) { f = i; break; }
+      if (f < 0 || s.t[f] - dom[0] < 45 * 6e4) return;
+      var x0 = M.l, x1 = x(Math.min(s.t[f], dom[1])), w = x1 - x0;
+      svg.insertBefore(sv('rect', { x: x0, y: top, width: Math.max(0, w), height: bottom - top, fill: PAL['surface-2'] }), svg.firstChild);
+      var label = w > 200 ? 'erfasst ab ' + fDayTime(s.t[f]) : w > 96 ? 'erfasst ab ' + fTime(s.t[f]) : '';
+      if (label) svg.appendChild(sv('text', { x: (x0 + x1) / 2, y: (top + bottom) / 2 + 4, 'text-anchor': 'middle' }, label));
+    }
 
     panels.forEach(function (p) {
       var wrap = el('div', { class: 'panel' });
@@ -1019,6 +1040,7 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
         y = d3.scaleLinear().domain([Math.max(0, Math.min(lo, 40) - 2), Math.min(100, Math.max(hi, 60) + 2)]).nice().range([bottom, top]);
         svg.setAttribute('aria-label', 'Luftfeuchte ' + room.name);
       } else {
+        ext = collect(vs, 'v', []);
         y = d3.scaleLinear().domain([0, 100]).range([bottom, top]);
         svg.setAttribute('aria-label', 'Ventilöffnung ' + room.name);
       }
@@ -1049,30 +1071,46 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
         });
       }
       var lineAttrs = function (d, color) { return { d: d, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }; };
+      var dotColors;
       if (p.key === 'temp') {
         svg.appendChild(sv('path', { d: stepPath(room.s, 'tgt', dom, x, y, gapT), fill: 'none', stroke: PAL['ink-3'], 'stroke-width': 1.5, 'stroke-dasharray': '5 4' }));
         svg.appendChild(sv('path', lineAttrs(sparkPath(room.s, 'act', dom, x, y, gapT), PAL.s1)));
+        dotColors = [PAL.s1, PAL['ink-3']];
       } else if (p.key === 'out') {
-        if (ext.length) svg.appendChild(sv('path', lineAttrs(sparkPath(m.outdoor, 'v', dom, x, y, gapO), PAL.context)));
+        if (ext.length) { startMark(svg, m.outdoor, top, bottom); svg.appendChild(sv('path', lineAttrs(sparkPath(m.outdoor, 'v', dom, x, y, gapO), PAL.context))); }
         else note(svg, top, bottom, 'Keine Außenwerte im Zeitraum');
+        dotColors = [PAL.context];
       } else if (p.key === 'hum') {
-        if (ext.length) svg.appendChild(sv('path', lineAttrs(sparkPath(room.h, 'v', dom, x, y, gapH), PAL.s3)));
+        if (ext.length) { startMark(svg, room.h, top, bottom); svg.appendChild(sv('path', lineAttrs(sparkPath(room.h, 'v', dom, x, y, gapH), PAL.s3))); }
         else note(svg, top, bottom, 'Keine Luftfeuchte-Werte im Zeitraum');
-      } else if (vs.t.length) {
-        var area = stepPath(vs, 'v', dom, x, y, gapV);
-        area.split('M').filter(Boolean).forEach(function (sg) { // Schleier unter der Stufenlinie
-          var mm = /^([\d.]+),/.exec(sg);
-          if (mm) svg.appendChild(sv('path', { d: 'M' + sg + 'V' + y(0) + 'H' + mm[1] + 'Z', fill: PAL.s2, 'fill-opacity': 0.12, stroke: 'none' }));
-        });
-        svg.appendChild(sv('path', { d: area, fill: 'none', stroke: PAL.s2, 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+        dotColors = [PAL.s3];
+      } else if (!valves.length) {
+        note(svg, top, bottom, 'Diesem Raum ist kein Stellantrieb zugeordnet');
+        dotColors = [];
+      } else if (!ext.length) {
+        note(svg, top, bottom, 'Keine Ventilwerte im Zeitraum');
+        dotColors = [];
       } else {
-        note(svg, top, bottom, valveSeries.length ? 'Keine Ventilwerte im Zeitraum' : 'Diesem Raum ist kein Stellantrieb zugeordnet');
+        startMark(svg, vs, top, bottom);
+        if (split) {
+          valves.forEach(function (va, k) {
+            svg.appendChild(sv('path', { d: stepPath(va.s, 'v', dom, x, y, gapLimit(va.s)), fill: 'none', stroke: PAL.s2, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-dasharray': DASH[k % 3] }));
+          });
+          dotColors = valves.map(function () { return PAL.s2; });
+        } else {
+          var area = stepPath(vs, 'v', dom, x, y, gapV);
+          area.split('M').filter(Boolean).forEach(function (sg) { // Schleier unter der Stufenlinie
+            var mm = /^([\d.]+),/.exec(sg);
+            if (mm) svg.appendChild(sv('path', { d: 'M' + sg + 'V' + y(0) + 'H' + mm[1] + 'Z', fill: PAL.s2, 'fill-opacity': 0.14, stroke: 'none' }));
+          });
+          svg.appendChild(sv('path', { d: area, fill: 'none', stroke: PAL.s2, 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+          dotColors = [PAL.s2];
+        }
       }
       // Fadenkreuz
       var g = sv('g', { 'pointer-events': 'none', visibility: 'hidden' });
       g.appendChild(sv('line', { y1: top - 4, y2: p.axis ? bottom : p.h + 12, stroke: PAL['ink-3'], 'stroke-width': 1 }));
       var dots = [];
-      var dotColors = p.key === 'temp' ? [PAL.s1, PAL['ink-3']] : p.key === 'out' ? [PAL.context] : p.key === 'hum' ? [PAL.s3] : [PAL.s2];
       dotColors.forEach(function (col) { var d = sv('circle', { r: 4, fill: col, stroke: PAL.surface, 'stroke-width': 2 }); g.appendChild(d); dots.push(d); });
       svg.appendChild(g);
       cross.push({ g: g, dots: dots, p: p });
@@ -1104,6 +1142,9 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
       k = Math.max(r[0], Math.min(r[1] - 1, k));
       if (k >= 0 && room.s.t[k] != null) setCursor(Math.max(dom[0], room.s.t[k]));
     }
+    function valveVals(t, gap) {
+      return split ? valves.map(function (va) { return valueAt(va.s, 'v', t, gap || gapLimit(va.s)).v; }) : [valueAt(vs, 'v', t, gap || gapV).v];
+    }
     function setCursor(t) {
       cursorT = t;
       cross.forEach(function (c) {
@@ -1115,7 +1156,7 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
         if (c.p.key === 'temp') vals = [valueAt(room.s, 'act', t, gapT).v, valueAt(room.s, 'tgt', t, gapT).v];
         else if (c.p.key === 'out') vals = [valueAt(m.outdoor, 'v', t, gapO).v];
         else if (c.p.key === 'hum') vals = [valueAt(room.h, 'v', t, gapH).v];
-        else vals = [valueAt(vs, 'v', t, gapV).v];
+        else vals = valveVals(t);
         c.dots.forEach(function (d, i) {
           if (vals[i] == null) { d.setAttribute('visibility', 'hidden'); return; }
           d.setAttribute('visibility', 'visible'); d.setAttribute('cx', xx); d.setAttribute('cy', c.p.y(vals[i]));
@@ -1123,9 +1164,9 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
       });
       readout(t);
     }
-    function ro(parent, value, label, keyColor, dashed) {
+    function ro(parent, value, label, keyColor, keyStyle) {
       var s = el('span', { class: 'ro' });
-      if (keyColor) { var k = el('i', { class: 'key' + (dashed ? ' dash' : '') }); k.style.color = keyColor; s.appendChild(k); }
+      if (keyColor) { var k = el('i', { class: 'key' + (keyStyle ? ' ' + keyStyle : '') }); k.style.color = keyColor; s.appendChild(k); }
       s.appendChild(el('b', { class: 'num' }, value));
       if (label) s.appendChild(el('span', null, label));
       parent.appendChild(s);
@@ -1138,27 +1179,30 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
       var head = heads.temp; clear(head);
       head.appendChild(el('span', { class: 'ro-time num' }, (t == null ? 'Stand ' : '') + fDayTime(t == null ? (a.i >= 0 ? room.s.t[a.i] : m.latest) : t)));
       ro(head, fC(a.v), 'Ist', PAL.s1);
-      ro(head, fC(tg.v), 'Soll', PAL['ink-3'], true);
+      ro(head, fC(tg.v), 'Soll', PAL['ink-3'], 'dash');
       ro(head, fK(a.v != null && tg.v != null ? a.v - tg.v : null), 'Abweichung');
       ro(head, modeLabel(m, 'temperature_mode', md), 'Modus');
 
-      head = heads.out; clear(head);
-      head.appendChild(el('span', { class: 'ttl' }, 'Außentemperatur'));
-      ro(head, fC(valueAt(m.outdoor, 'v', at, t == null ? 3 * 36e5 : gapO).v), '', PAL.context);
-      head.appendChild(el('span', { class: 'muted' }, 'Wettermodell, kein Haussensor'));
+      head = heads.valve; clear(head);
+      head.appendChild(el('span', { class: 'ttl' }, 'Ventilöffnung'));
+      if (valves.length) {
+        var vv = valveVals(at, fresh);
+        if (split) valves.forEach(function (va, k) { ro(head, fPct(vv[k]), va.name, PAL.s2, DASH_KEY[k % 3]); });
+        else {
+          ro(head, fPct(vv[0]), '', PAL.s2);
+          head.appendChild(el('span', { class: 'muted' }, valves.map(function (va) { return va.name; }).join(' · ') + (valves.length > 1 ? ' · alle gleich weit geöffnet' : '')));
+        }
+      } else head.appendChild(el('span', { class: 'muted' }, 'kein Stellantrieb'));
 
       head = heads.hum; clear(head);
       head.appendChild(el('span', { class: 'ttl' }, 'Luftfeuchte'));
       ro(head, fPct(valueAt(room.h, 'v', at, fresh || gapH).v), '', PAL.s3);
       head.appendChild(el('span', { class: 'muted' }, 'Bereich 40–60 % hinterlegt'));
 
-      head = heads.valve; clear(head);
-      head.appendChild(el('span', { class: 'ttl' }, valveSeries.length > 1 ? 'Ventilöffnung Ø ' + valveSeries.length + ' Stellantriebe' : 'Ventilöffnung'));
-      if (valveSeries.length) {
-        ro(head, fPct(valueAt(vs, 'v', at, fresh || gapV).v), '', PAL.s2);
-        if (valveSeries.length > 1) valveSeries.forEach(function (va) { ro(head, fPct(valueAt(va.s, 'v', at, fresh || gapLimit(va.s)).v), va.name); });
-        else head.appendChild(el('span', { class: 'muted' }, valveSeries[0].name));
-      }
+      head = heads.out; clear(head);
+      head.appendChild(el('span', { class: 'ttl' }, 'Außentemperatur'));
+      ro(head, fC(valueAt(m.outdoor, 'v', at, t == null ? 3 * 36e5 : gapO).v), '', PAL.context);
+      head.appendChild(el('span', { class: 'muted' }, 'Wettermodell, kein Haussensor'));
     }
     readout(null);
   }
@@ -1318,6 +1362,11 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
     var ob = el('i', { role: 'img', 'aria-label': 'Farbskala geöffnet von 1 bis 100 %' }); ob.style.background = 'linear-gradient(90deg,' + mix(PAL.s2, PAL.surface, 0.3) + ',' + PAL.s2 + ')'; os.appendChild(ob);
     os.appendChild(el('span', { class: 'num' }, '100 % geöffnet')); vl.appendChild(os);
     vl.appendChild(el('span', { class: 'muted' }, m.actuators.length + ' Stellantriebe'));
+    var multi = 0, compared = 0, differ = [];
+    m.rooms.forEach(function (r) { if (r.valves.length < 2) return; multi++; var ag = valvesAgree(r.valves, dom); compared += ag.n; if (!ag.same) differ.push(r.name); });
+    if (multi && compared) vl.appendChild(el('span', { class: 'muted' }, differ.length
+      ? 'Unterschiedlich weit geöffnet im Zeitraum: ' + differ.join(', ')
+      : 'Räume mit mehreren Stellantrieben (' + multi + '): im Zeitraum immer alle gleich weit geöffnet'));
   }
   function seqLegend(host, hex, lo, hi, unit, note) {
     clear(host);
@@ -1364,11 +1413,12 @@ body { margin: 0; background: var(--page); color: var(--ink); font-family: var(-
         var t = room.s.t[i]; if (t < dom[0]) continue;
         var a = room.s.act[i], g = room.s.tgt[i];
         var hv = valueAt(room.h, 'v', t, 15 * 6e4).v;
-        var vv = room.valves.map(function (va) { return valueAt(va.s, 'v', t, 15 * 6e4).v; });
+        var vv = room.valves.map(function (va) { return fPct(valueAt(va.s, 'v', t, 15 * 6e4).v); });
         var ov = valueAt(m.outdoor, 'v', t, 36e5).v;
-        rows.push([fDayTime(t), fC(a), fC(g), fK(a != null && g != null ? a - g : null), modeLabel(m, 'temperature_mode', room.s.mode[i]), modeLabel(m, 'operating_mode', room.s.op[i]), fPct(hv), room.valves.length ? fPct(mean(vv)) : '–', fC(ov)]);
+        rows.push([fDayTime(t), fC(a), fC(g), fK(a != null && g != null ? a - g : null), modeLabel(m, 'temperature_mode', room.s.mode[i]), modeLabel(m, 'operating_mode', room.s.op[i])].concat(vv.length ? vv : ['–'], [fPct(hv), fC(ov)]));
       }
-      table($('detail-table'), [['Zeit'], ['Ist', 1], ['Soll', 1], ['Abweichung', 1], ['Modus'], ['Betriebsart'], ['Luftfeuchte', 1], ['Ventile Ø', 1], ['Außen', 1]], rows);
+      var vhead = room.valves.length ? room.valves.map(function (va) { return ['Ventil ' + va.name, 1]; }) : [['Ventil', 1]];
+      table($('detail-table'), [['Zeit'], ['Ist', 1], ['Soll', 1], ['Abweichung', 1], ['Modus'], ['Betriebsart']].concat(vhead, [['Luftfeuchte', 1], ['Außen', 1]]), rows);
     } else if (which === 'dev') {
       table($('dev-table'), [['Raum'], ['Ø Abweichung', 1], ['Anteil im Soll', 1], ['Anteil darunter', 1], ['Min Ist', 1], ['Max Ist', 1], ['Messpunkte', 1]],
         m.rooms.map(function (r) {
