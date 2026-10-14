@@ -1,0 +1,1524 @@
+<title>Raumklima &amp; Heizung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: ein Hausschnitt (DG oben, UG unten) als Kern, darunter Zeitreihen, die sich eine Zeitachse teilen. */
+:root {
+  --page: #f1f3f5;
+  --surface: #fcfcfd;
+  --surface-2: #f4f6f8;
+  --ink: #11151a;
+  --ink-2: #48505a;
+  --ink-3: #636b75;
+  --hair: #e2e5e9;
+  --rule: #c8cdd3;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --cold: #2a78d6;
+  --warm: #e34948;
+  --neutral: #e6e9ec;
+  --context: #7f8790;
+  --ok: #0ca30c;
+  --warn: #fab219;
+  --bad: #d03b3b;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(17, 21, 26, 0.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0c0f12; --surface: #151a1f; --surface-2: #1b2127; --ink: #f1f3f5; --ink-2: #b7bec6; --ink-3: #8b939c;
+    --hair: #252b32; --rule: #343b44; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --cold: #3987e5; --warm: #e66767;
+    --neutral: #2a3037; --context: #6f7780; --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0c0f12; --surface: #151a1f; --surface-2: #1b2127; --ink: #f1f3f5; --ink-2: #b7bec6; --ink-3: #8b939c;
+  --hair: #252b32; --rule: #343b44; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --cold: #3987e5; --warm: #e66767;
+  --neutral: #2a3037; --context: #6f7780; --shadow: none; color-scheme: dark;
+}
+
+.rk, .rk *, .rk *::before, .rk *::after, .tip { box-sizing: border-box; }
+.rk [hidden], .tip[hidden] { display: none !important; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+.rk { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 40px; display: flex; flex-direction: column; gap: 18px; }
+@media (min-width: 760px) { .rk { padding-inline: 28px; padding-block: 28px 56px; gap: 22px; } }
+.rk h1, .rk h2, .rk h3 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: 0.005em; }
+.rk p { margin: 0; }
+.rk button, .rk select { font: inherit; color: inherit; }
+.rk :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 4px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-3); }
+
+/* Kopf */
+.top { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: end; }
+@media (min-width: 900px) { .top { grid-template-columns: 1fr auto; } }
+.top h1 { font-size: 30px; line-height: 1.05; }
+@media (min-width: 760px) { .top h1 { font-size: 38px; } }
+.top .sub { color: var(--ink-2); margin-top: 4px; }
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; color: var(--ink-2); font-size: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--hair); font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.chip.live .dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 22%, transparent); }
+.chip.stale .dot, .chip.snap .dot { background: var(--warn); }
+.chip.err .dot { background: var(--bad); }
+
+.range { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--surface); border: 1px solid var(--hair); gap: 2px; justify-self: start; }
+@media (min-width: 900px) { .range { justify-self: end; } }
+.range button { border: 0; background: transparent; padding: 7px 12px; border-radius: 7px; font-weight: 500; font-size: 14px; color: var(--ink-2); cursor: pointer; min-height: 36px; white-space: nowrap; }
+.range button:hover { background: var(--surface-2); color: var(--ink); }
+.range button[aria-checked="true"] { background: var(--ink); color: var(--surface); }
+.range-note { font-size: 13px; color: var(--ink-3); margin-top: -10px; }
+
+.banner { border-radius: var(--radius); padding: 12px 14px; background: var(--surface); border: 1px solid var(--hair); display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.banner strong { display: block; }
+.banner.err { border-color: color-mix(in oklab, var(--bad) 45%, var(--hair)); }
+.banner .btn { flex: none; }
+.btn { border: 1px solid var(--rule); background: var(--surface); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px; min-height: 34px; }
+.btn:hover { background: var(--surface-2); }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+
+/* Kennzahlen */
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 700px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.kpi { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--radius); padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; box-shadow: var(--shadow); }
+.kpi-label { font-size: 13px; color: var(--ink-2); font-weight: 500; letter-spacing: 0.01em; }
+.kpi-value { font-family: var(--font-display); font-weight: 600; font-size: 30px; line-height: 1.1; letter-spacing: -0.005em; white-space: nowrap; }
+.kpi-value.small { font-size: 24px; padding-top: 4px; }
+.kpi-value .unit { font-size: 17px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+.kpi-sub { font-size: 13px; color: var(--ink-3); min-height: 19px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.kpi-viz { height: 26px; margin-top: 4px; }
+.kpi-viz svg { display: block; width: 100%; height: 26px; overflow: visible; }
+.stackbar { display: flex; gap: 2px; height: 8px; margin-top: 10px; }
+.stackbar span { display: block; height: 100%; border-radius: 2px; min-width: 2px; }
+.meter { height: 8px; border-radius: 4px; margin-top: 10px; background: color-mix(in oklab, var(--s2) 18%, var(--surface)); overflow: hidden; }
+.meter span { display: block; height: 100%; border-radius: 4px; background: var(--s2); }
+
+/* Karten */
+.card { background: var(--surface); border: 1px solid var(--hair); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); min-width: 0; transition: opacity .2s; }
+@media (min-width: 760px) { .card { padding: 20px 22px 22px; } }
+.card-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
+.card-head h2 { font-size: 22px; line-height: 1.15; }
+.card-head .desc { color: var(--ink-2); font-size: 14px; margin-top: 3px; max-width: 64ch; }
+.card-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.is-loading .card, .is-loading .kpi { opacity: .55; }
+
+/* Hausschnitt */
+.house { display: flex; flex-direction: column; }
+.roof { display: block; width: 100%; height: 26px; color: var(--rule); }
+@media (min-width: 760px) { .roof { height: 34px; } }
+.floor { display: grid; grid-template-columns: 1fr; gap: 8px; padding-block: 12px; border-top: 1px solid var(--hair); }
+.floor:first-of-type { border-top: 0; }
+@media (min-width: 1180px) { .floor { grid-template-columns: 96px 1fr; gap: 14px; } }
+.floor-label { display: flex; align-items: baseline; gap: 8px; }
+@media (min-width: 1180px) { .floor-label { flex-direction: column; gap: 0; padding-top: 4px; } }
+.floor-code { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 1; }
+.floor-name { font-size: 13px; color: var(--ink-3); }
+.rooms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 560px) { .rooms { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 820px) { .rooms { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1040px) { .rooms { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.ground { position: relative; height: 0; border-top: 2px solid var(--rule); margin-block: 2px; }
+.ground span { position: absolute; right: 0; top: -9px; padding-left: 8px; background: var(--surface); font-size: 12px; color: var(--ink-3); letter-spacing: 0.04em; }
+
+.room { text-align: left; border: 1px solid var(--hair); background: var(--surface-2); border-radius: var(--radius); padding: 10px 10px 9px; display: flex; flex-direction: column; gap: 1px; cursor: pointer; min-width: 0; transition: border-color .15s, transform .15s; position: relative; }
+.room:hover { border-color: var(--rule); }
+.room[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.room-name { font-weight: 600; font-size: 14px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-main { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 6px; margin-top: 2px; }
+.room-temp { font-family: var(--font-display); font-weight: 600; font-size: 29px; line-height: 1.05; white-space: nowrap; }
+.room-delta { font-weight: 600; font-size: 13.5px; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
+.room-delta svg { width: 9px; height: 9px; flex: none; }
+.room-meta { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-spark { display: block; width: 100%; height: 30px; margin-block: 6px 4px; overflow: visible; }
+.room-foot { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.room-foot span { overflow: hidden; text-overflow: ellipsis; }
+
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--ink-2); margin-top: 12px; }
+.divscale { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.divscale .sw { display: inline-flex; gap: 2px; }
+.divscale .sw i { display: block; width: 22px; height: 12px; border-radius: 3px; }
+.seqscale { display: inline-flex; align-items: center; gap: 8px; }
+.seqscale i { display: block; width: 120px; height: 10px; border-radius: 3px; }
+.seqscale i.closed { width: 22px; }
+.key { display: inline-block; width: 16px; height: 0; border-top: 2px solid currentColor; vertical-align: middle; margin-right: 6px; }
+.key.dash { border-top-style: dashed; }
+
+/* Verlauf */
+.detail-select { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.select { appearance: none; -webkit-appearance: none; border: 1px solid var(--rule); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 10px center; padding: 6px 32px 6px 11px; border-radius: 8px; font-weight: 600; min-height: 36px; font-size: 15px; max-width: 100%; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; font-size: 13.5px; color: var(--ink-2); min-height: 22px; }
+.panel-head .ttl { font-weight: 600; color: var(--ink); }
+.ro { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.ro b { font-weight: 600; color: var(--ink); font-size: 15px; }
+.ro-time { font-weight: 600; color: var(--ink); }
+.chart { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.panel + .panel { margin-top: 12px; }
+.axis text, .chart text { fill: var(--ink-3); font-size: 11.5px; font-family: var(--font-body); }
+.empty { color: var(--ink-3); font-size: 14px; padding: 12px 0; }
+
+/* Heatmaps */
+.heat { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.heat canvas { position: absolute; left: 0; top: 0; }
+.heat svg { position: relative; display: block; width: 100%; overflow: visible; }
+.heat text { fill: var(--ink-2); font-size: 12px; font-family: var(--font-body); }
+.heat text.floor-t { fill: var(--ink); font-weight: 600; font-family: var(--font-display); font-size: 13px; }
+.heat text.tick { fill: var(--ink-3); font-size: 11.5px; }
+
+/* Tooltip */
+.tip { position: fixed; z-index: 30; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; font-size: 13px; line-height: 1.4; box-shadow: 0 6px 20px rgba(0,0,0,.14); max-width: 260px; }
+.tip .t-h { font-weight: 600; margin-bottom: 2px; }
+.tip .t-r { display: flex; gap: 8px; justify-content: space-between; }
+.tip .t-r b { font-weight: 600; }
+.tip .t-s { color: var(--ink-3); }
+
+/* Tabellen */
+.table-wrap { margin-top: 14px; overflow: auto; max-height: 440px; border: 1px solid var(--hair); border-radius: 8px; }
+.table-wrap table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.table-wrap th, .table-wrap td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--hair); white-space: nowrap; }
+.table-wrap th { position: sticky; top: 0; background: var(--surface-2); font-weight: 600; z-index: 1; }
+.table-wrap td.r, .table-wrap th.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Daten & Quelle */
+.facts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.facts > div { min-width: 0; }
+@media (min-width: 860px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.facts dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 14px; }
+.facts dt { color: var(--ink-3); }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.facts h3 { font-size: 16px; margin-bottom: 8px; }
+.notes { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; display: grid; gap: 4px; }
+.facts a, .foot a { color: var(--ink); text-underline-offset: 2px; }
+.foot { color: var(--ink-3); font-size: 13px; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) { .rk *, .rk *::before { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="rk" id="rk">
+  <header class="top">
+    <div>
+      <h1>Raumklima &amp; Heizung</h1>
+      <p class="sub">20 Räume auf 4 Etagen · Loxone-Messwerte alle 10 Minuten</p>
+      <div class="status" id="status" aria-live="polite">
+        <span class="chip" id="status-chip"><span class="dot"></span><span id="status-label">Lädt …</span></span>
+        <span id="status-text" class="num">Daten werden aus dem Google Sheet geladen.</span>
+      </div>
+    </div>
+    <div class="range" role="radiogroup" aria-label="Zeitraum" id="range">
+      <button type="button" role="radio" data-range="24h" aria-checked="true">24 Std</button>
+      <button type="button" role="radio" data-range="3d" aria-checked="false">3 Tage</button>
+      <button type="button" role="radio" data-range="7d" aria-checked="false">7 Tage</button>
+      <button type="button" role="radio" data-range="30d" aria-checked="false">30 Tage</button>
+    </div>
+  </header>
+  <p class="range-note" id="range-note" hidden></p>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="kpis" id="kpis" aria-label="Kennzahlen">
+    <div class="kpi"><span class="kpi-label">Innen Ø</span><span class="kpi-value">–</span><span class="kpi-sub">&nbsp;</span><div class="kpi-viz"></div></div>
+    <div class="kpi"><span class="kpi-label">Außen</span><span class="kpi-value">–</span><span class="kpi-sub">&nbsp;</span><div class="kpi-viz"></div></div>
+    <div class="kpi"><span class="kpi-label">Räume im Soll</span><span class="kpi-value">–</span><span class="kpi-sub">&nbsp;</span><div class="kpi-viz"></div></div>
+    <div class="kpi"><span class="kpi-label">Luftfeuchte Ø</span><span class="kpi-value">–</span><span class="kpi-sub">&nbsp;</span><div class="kpi-viz"></div></div>
+    <div class="kpi"><span class="kpi-label">Ventile offen</span><span class="kpi-value">–</span><span class="kpi-sub">&nbsp;</span><div class="kpi-viz"></div></div>
+    <div class="kpi"><span class="kpi-label">Spanne innen</span><span class="kpi-value">–</span><span class="kpi-sub">&nbsp;</span><div class="kpi-viz"></div></div>
+  </section>
+
+  <section class="card" id="house-card" aria-labelledby="house-h">
+    <div class="card-head">
+      <div>
+        <h2 id="house-h">Jetzt im Haus</h2>
+        <p class="desc" id="house-desc">Ist-Temperatur je Raum, darunter der Verlauf im gewählten Zeitraum. Die Färbung zeigt die Abweichung vom Sollwert.</p>
+      </div>
+      <div class="card-tools"><button type="button" class="btn" data-table="house" aria-pressed="false">Tabelle</button></div>
+    </div>
+    <div class="house" id="house"><p class="empty">Räume werden geladen …</p></div>
+    <div class="legend" id="house-legend"></div>
+    <div class="table-wrap" id="house-table" hidden></div>
+  </section>
+
+  <section class="card" id="detail-card" aria-labelledby="detail-h">
+    <div class="card-head">
+      <div>
+        <h2 id="detail-h">Verlauf je Raum</h2>
+        <p class="desc">Temperatur, Außentemperatur, Luftfeuchte und Ventilöffnung auf einer gemeinsamen Zeitachse. Antippen oder darüberfahren zeigt die Werte zu einem Zeitpunkt.</p>
+      </div>
+      <div class="card-tools">
+        <label class="detail-select"><span class="muted">Raum</span><select class="select" id="room-select" aria-label="Raum wählen"></select></label>
+        <button type="button" class="btn" data-table="detail" aria-pressed="false">Tabelle</button>
+      </div>
+    </div>
+    <div class="chart" id="detail-chart"><p class="empty">Verlauf wird geladen …</p></div>
+    <div class="table-wrap" id="detail-table" hidden></div>
+  </section>
+
+  <section class="card" id="dev-card" aria-labelledby="dev-h">
+    <div class="card-head">
+      <div>
+        <h2 id="dev-h">Abweichung vom Soll</h2>
+        <p class="desc">Jede Zeile ist ein Raum, jede Spalte ein Messzeitpunkt. Blau heißt kälter als der Sollwert, Rot wärmer, Grau im Soll (±0,5 K).</p>
+      </div>
+      <div class="card-tools"><button type="button" class="btn" data-table="dev" aria-pressed="false">Tabelle</button></div>
+    </div>
+    <div class="heat" id="dev-heat"></div>
+    <div class="legend" id="dev-legend"></div>
+    <div class="table-wrap" id="dev-table" hidden></div>
+  </section>
+
+  <section class="card" id="hum-card" aria-labelledby="hum-h">
+    <div class="card-head">
+      <div>
+        <h2 id="hum-h">Luftfeuchte</h2>
+        <p class="desc">Relative Luftfeuchte je Raum. Dunkler heißt feuchter. Als angenehm gelten meist 40–60 %.</p>
+      </div>
+      <div class="card-tools"><button type="button" class="btn" data-table="hum" aria-pressed="false">Tabelle</button></div>
+    </div>
+    <div class="heat" id="hum-heat"></div>
+    <div class="legend" id="hum-legend"></div>
+    <div class="table-wrap" id="hum-table" hidden></div>
+  </section>
+
+  <section class="card" id="valve-card" aria-labelledby="valve-h">
+    <div class="card-head">
+      <div>
+        <h2 id="valve-h">Ventilöffnung</h2>
+        <p class="desc">Öffnung jedes Stellantriebs der Heizkreise, gruppiert nach Raum. Dunkler heißt weiter geöffnet. Die Öffnung ist kein gemessener Wärmeverbrauch.</p>
+      </div>
+      <div class="card-tools"><button type="button" class="btn" data-table="valve" aria-pressed="false">Tabelle</button></div>
+    </div>
+    <div class="heat" id="valve-heat"></div>
+    <div class="legend" id="valve-legend"></div>
+    <div class="table-wrap" id="valve-table" hidden></div>
+  </section>
+
+  <section class="card" id="data-card" aria-labelledby="data-h">
+    <div class="card-head"><div><h2 id="data-h">Daten &amp; Quelle</h2><p class="desc">Woher die Zahlen kommen und wie aktuell sie sind.</p></div></div>
+    <div class="facts">
+      <div>
+        <h3>Quelle</h3>
+        <dl id="facts"></dl>
+      </div>
+      <div>
+        <h3>Hinweise</h3>
+        <ul class="notes">
+          <li>„Im Soll“ heißt: Ist-Temperatur höchstens 0,5 K vom Sollwert entfernt.</li>
+          <li>Die Außentemperatur stammt aus dem Open-Meteo-Wettermodell, nicht von einem Sensor am Haus.</li>
+          <li>Die Ventilöffnung ist die Stellung des Stellantriebs, kein gemessener Wärmeverbrauch.</li>
+          <li>Modus-Bezeichnungen kommen aus dem Codebook im Sheet. Nicht dokumentierte Codes werden als Rohcode angezeigt.</li>
+          <li>Alle Zeiten in deutscher Zeit (Europe/Berlin).</li>
+        </ul>
+        <div class="table-wrap" id="codebook-table"></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot" id="foot">Raumklima &amp; Heizung · Daten aus dem Loxone-Logger</p>
+</div>
+<div class="tip" id="tip" role="status" hidden></div>
+<!--@@SNAPSHOT@@-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+/*@@CONFIG@@*/
+(function () {
+  'use strict';
+
+  /* ---------- Konfiguration ---------- */
+  var CFG = Object.assign({ mode: 'live', sheetId: '1PRRNewgk2MVyh_9-VGFao4YBhNLhzdvUvgcVphER0yg', refreshMinutes: 5 }, window.RK_CONFIG || {});
+  var GID = { temperatures: 10000, humidity: 10001, valves: 10002, outdoor: 10003, controllers: 10005, actuators: 10006, codebook: 10007, sync_status: 10010 };
+  // Spalten je Tab (Buchstaben = Position im Sheet; wird beim Laden gegen die Kopfzeile geprüft)
+  var SPEC = {
+    temperatures: { sel: 'B,E,F,G,H,I', ts: 'B', cols: ['timestamp_utc', 'control_uuid', 'actual_c', 'target_c', 'operating_mode', 'temperature_mode'] },
+    humidity: { sel: 'B,E,F,G', ts: 'B', cols: ['timestamp_utc', 'control_uuid', 'humidity_pct', 'available'] },
+    valves: { sel: 'B,E,G,H', ts: 'B', cols: ['timestamp_utc', 'control_uuid', 'opening_pct', 'available'] },
+    outdoor: { sel: 'B,D,F', ts: 'B', cols: ['timestamp_utc', 'actual_c', 'available'] },
+    controllers: { sel: 'A,B,C,D', cols: ['control_uuid', 'current_room', 'first_seen_utc', 'last_seen_utc'] },
+    actuators: { sel: 'A,B,C,D,E', cols: ['control_uuid', 'current_room', 'current_name', 'first_seen_utc', 'last_seen_utc'] },
+    codebook: { sel: 'A,B,C,D', cols: ['category', 'code', 'label', 'meaning'] },
+    sync_status: { sel: 'A,B', cols: ['key', 'value'] }
+  };
+  var FLOORS = [
+    { code: 'DG', name: 'Dachgeschoss' },
+    { code: 'OG', name: 'Obergeschoss' },
+    { code: 'EG', name: 'Erdgeschoss' },
+    { code: 'UG', name: 'Untergeschoss' }
+  ];
+  var RANGES = {
+    '24h': { ms: 864e5, label: '24 Std', hourly: false },
+    '3d': { ms: 3 * 864e5, label: '3 Tage', hourly: false },
+    '7d': { ms: 7 * 864e5, label: '7 Tage', hourly: true },
+    '30d': { ms: 30 * 864e5, label: '30 Tage', hourly: true }
+  };
+  var BAND = 0.5;          // ±K gilt als „im Soll“
+  var DAY = 864e5;
+
+  /* ---------- Hilfen ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k) { try { return window.localStorage.getItem('rk.' + k); } catch (e) { return null; } },
+    set: function (k, v) { try { window.localStorage.setItem('rk.' + k, v); } catch (e) { /* egal */ } }
+  };
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text) {
+    var n = document.createElement(tag);
+    if (attrs) for (var k in attrs) { if (k === 'class') n.className = attrs[k]; else n.setAttribute(k, attrs[k]); }
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function sv(tag, attrs, text) {
+    var n = document.createElementNS(SVGNS, tag);
+    if (attrs) for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+
+  var nf1 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  var nf0 = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
+  var nfInt = new Intl.NumberFormat('de-DE');
+  function fC(v) { return v == null ? '–' : nf1.format(v) + ' °C'; }
+  function fDeg(v) { return v == null ? '–' : nf1.format(v) + '°'; }
+  function fK(d) { if (d == null) return '–'; var r = Math.round(d * 10) / 10; return (r > 0 ? '+' : r < 0 ? '−' : '±') + nf1.format(Math.abs(r)) + ' K'; }
+  function fPct(v) { return v == null ? '–' : nf0.format(v) + ' %'; }
+  function fTick(v) { return Number.isInteger(v) ? nf0.format(v) : nf1.format(v); }
+
+  var TZ = 'Europe/Berlin';
+  var dfTime = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+  var dfDayTime = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  var dfDate = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' });
+  var dfParts = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  function fTime(t) { return dfTime.format(t); }
+  function fDayTime(t) { return dfDayTime.format(t).replace(/,\s*/, ', '); }
+  function fDate(t) { return dfDate.format(t); }
+  var offCache = new Map();
+  function berlinOffset(ms) {
+    var key = Math.floor(ms / 9e5);
+    var o = offCache.get(key);
+    if (o === undefined) {
+      var p = {};
+      dfParts.formatToParts(new Date(key * 9e5)).forEach(function (x) { p[x.type] = x.value; });
+      o = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - key * 9e5;
+      o = Math.round(o / 6e4) * 6e4;
+      offCache.set(key, o);
+    }
+    return o;
+  }
+  // Zeitachsen-Ticks auf deutsche Uhrzeit ausgerichtet
+  function timeTicks(t0, t1, count) {
+    var o0 = berlinOffset(t0);
+    var wall = d3.utcTicks(new Date(t0 + o0), new Date(t1 + berlinOffset(t1)), Math.max(2, count));
+    var step = wall.length > 1 ? wall[1] - wall[0] : DAY;
+    return wall.map(function (w) {
+      var t = +w - berlinOffset(+w - o0);
+      var d = new Date(+w);
+      var midnight = d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+      var label;
+      if (step >= DAY || midnight) label = String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') + '.';
+      else label = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+      return { t: t, label: label, strong: midnight };
+    }).filter(function (x) { return x.t >= t0 && x.t <= t1; });
+  }
+  function tms(s) {
+    if (!s) return NaN;
+    var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(?:\.(\d+))?Z$/.exec(s);
+    if (m) return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], m[7] ? +(m[7] + '00').slice(0, 3) : 0);
+    return Date.parse(s);
+  }
+  function num(x) { if (x === '' || x == null) return null; var v = +x; return isFinite(v) ? v : null; }
+  function isTrue(x) { return String(x).toUpperCase() === 'TRUE'; }
+  function isoKey(ms) { return new Date(ms).toISOString().slice(0, 19); }
+  function mean(a) { var s = 0, n = 0; for (var i = 0; i < a.length; i++) if (a[i] != null) { s += a[i]; n++; } return n ? s / n : null; }
+  function median(a) { if (!a.length) return null; var b = a.slice().sort(function (x, y) { return x - y; }); var h = b.length >> 1; return b.length % 2 ? b[h] : (b[h - 1] + b[h]) / 2; }
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  /* ---------- Farben (OKLab-Mischung, damit Kacheln und Heatmaps dieselben Stufen nutzen) ---------- */
+  function hexToRgb(h) { h = h.replace('#', ''); if (h.length === 3) h = h.replace(/./g, '$&$&'); var n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+  function lin(c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function delin(c) { c = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; return Math.max(0, Math.min(255, Math.round(c * 255))); }
+  function toOklab(rgb) {
+    var r = lin(rgb[0]), g = lin(rgb[1]), b = lin(rgb[2]);
+    var l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    var m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    var s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+  }
+  function fromOklab(o) {
+    var l = Math.pow(o[0] + 0.3963377774 * o[1] + 0.2158037573 * o[2], 3);
+    var m = Math.pow(o[0] - 0.1055613458 * o[1] - 0.0638541728 * o[2], 3);
+    var s = Math.pow(o[0] - 0.0894841775 * o[1] - 1.2914855480 * o[2], 3);
+    return [delin(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s), delin(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s), delin(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)];
+  }
+  function mix(hexA, hexB, t) { // t = Anteil von A
+    var a = toOklab(hexToRgb(hexA)), b = toOklab(hexToRgb(hexB));
+    var c = fromOklab([b[0] + (a[0] - b[0]) * t, b[1] + (a[1] - b[1]) * t, b[2] + (a[2] - b[2]) * t]);
+    return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+  }
+  var PAL = {};
+  function readPalette() {
+    ['surface', 'surface-2', 'ink', 'ink-2', 'ink-3', 'hair', 'rule', 's1', 's2', 's3', 'cold', 'warm', 'neutral', 'context'].forEach(function (k) { PAL[k] = cssVar('--' + k) || '#888888'; });
+    var dark = toOklab(hexToRgb(PAL.surface))[0] < 0.5;
+    var steps = dark ? [0.30, 0.52, 0.78] : [0.20, 0.42, 0.68];
+    // 7 Stufen: kalt 3,2,1 · neutral · warm 1,2,3
+    PAL.div = [mix(PAL.cold, PAL.surface, steps[2]), mix(PAL.cold, PAL.surface, steps[1]), mix(PAL.cold, PAL.surface, steps[0]), PAL.neutral,
+      mix(PAL.warm, PAL.surface, steps[0]), mix(PAL.warm, PAL.surface, steps[1]), mix(PAL.warm, PAL.surface, steps[2])];
+    // Kacheln: im Soll bleibt ruhig
+    PAL.tile = PAL.div.slice(); PAL.tile[3] = PAL['surface-2'];
+    PAL.dark = dark;
+  }
+  function devClass(d) {
+    if (d == null) return -1;
+    if (d <= -3) return 0; if (d <= -1.5) return 1; if (d < -BAND) return 2;
+    if (d <= BAND) return 3; if (d < 1.5) return 4; if (d < 3) return 5; return 6;
+  }
+  var DEV_LABELS = ['≤ −3 K', '−3 bis −1,5 K', '−1,5 bis −0,5 K', '±0,5 K', '+0,5 bis +1,5 K', '+1,5 bis +3 K', '≥ +3 K'];
+  function seqColor(hex, v, lo, hi) {
+    if (v == null) return null;
+    var t = Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+    return mix(hex, PAL.surface, 0.15 + 0.85 * t);
+  }
+
+  /* ---------- Datenzugriff ---------- */
+  var snapshot = null;
+  (function () {
+    var s = $('rk-snapshot');
+    if (s) { try { snapshot = JSON.parse(s.textContent); } catch (e) { snapshot = null; } }
+    if (!snapshot && CFG.mode === 'snapshot') CFG.mode = 'live';
+  })();
+  var snapParsed = {};
+  function snapRows(table) {
+    if (!snapParsed[table]) snapParsed[table] = d3.csvParse((snapshot.tables && snapshot.tables[table]) || '');
+    return snapParsed[table];
+  }
+  var HOURLY = /T..:0.:/;
+  function filterRows(rows, range) {
+    if (!range) return rows;
+    var out = rows.filter(function (r) {
+      var ts = r.timestamp_utc || '';
+      return ts >= range.fromKey && (!range.hourly || ts >= range.fullKey || HOURLY.test(ts));
+    });
+    out.columns = rows.columns;
+    return out;
+  }
+  function gvizUrl(table, tq) {
+    return 'https://docs.google.com/spreadsheets/d/' + CFG.sheetId + '/gviz/tq?tqx=out:csv&headers=1&gid=' + GID[table] + '&tq=' + encodeURIComponent(tq);
+  }
+  function fetchCsv(url) {
+    return fetch(url, { cache: 'no-store', credentials: 'omit' }).then(function (res) {
+      if (!res.ok) throw new Error('Google antwortet mit Fehler ' + res.status + '.');
+      var ct = res.headers.get('content-type') || '';
+      return res.text().then(function (text) {
+        if (!/csv/i.test(ct)) throw new Error('Das Sheet liefert keine Tabellendaten. Ist es noch für „Jeder mit dem Link“ freigegeben?');
+        return d3.csvParse(text);
+      });
+    });
+  }
+  function sameCols(a, b) { return a && a.length === b.length && a.every(function (c, i) { return c === b[i]; }); }
+  function query(table, range) {
+    var spec = SPEC[table];
+    if (CFG.mode === 'snapshot') return Promise.resolve(filterRows(snapRows(table), spec.ts ? range : null));
+    var tq = 'select ' + spec.sel;
+    if (spec.ts && range) {
+      tq += ' where ' + spec.ts + " >= '" + range.fromKey + "'";
+      if (range.hourly) tq += ' and (' + spec.ts + " >= '" + range.fullKey + "' or " + spec.ts + " like '%T__:0_:%')";
+    }
+    if (spec.ts) tq += ' order by ' + spec.ts;
+    return fetchCsv(gvizUrl(table, tq)).then(function (rows) {
+      if (sameCols(rows.columns, spec.cols)) return rows;
+      // Spalten haben sich verschoben: ganze Tabelle laden und nach Namen filtern
+      return fetchCsv(gvizUrl(table, 'select *')).then(function (all) {
+        var missing = spec.cols.filter(function (c) { return all.columns.indexOf(c) < 0; });
+        if (missing.length) throw new Error('Im Tab „' + table + '“ fehlen Spalten: ' + missing.join(', '));
+        return filterRows(all, spec.ts ? range : null);
+      });
+    });
+  }
+
+  /* ---------- Modell ---------- */
+  function makeRange(key, latest) {
+    var R = RANGES[key] || RANGES['24h'];
+    var from = latest - R.ms;
+    return { key: key, label: R.label, ms: R.ms, from: from, to: latest, hourly: R.hourly, fromKey: isoKey(from), fullKey: isoKey(latest - DAY) };
+  }
+  function floorOrder(code) { for (var i = 0; i < FLOORS.length; i++) if (FLOORS[i].code === code) return i; return 99; }
+  function splitName(name) {
+    var i = name.indexOf('-');
+    return i > 0 ? { floor: name.slice(0, i), short: name.slice(i + 1) } : { floor: '–', short: name };
+  }
+  function series(rows, pick) { // nach Zeit sortierte Spalten-Arrays
+    rows.sort(function (a, b) { return a.t - b.t; });
+    var out = { t: rows.map(function (r) { return r.t; }) };
+    pick.forEach(function (k) { out[k] = rows.map(function (r) { return r[k]; }); });
+    return out;
+  }
+  function buildModel(raw, range) {
+    var code = {};
+    raw.codebook.forEach(function (r) { (code[r.category] = code[r.category] || {})[String(+r.code)] = { label: r.label, meaning: r.meaning }; });
+    var sync = {};
+    raw.sync_status.forEach(function (r) { sync[r.key] = r.value; });
+
+    var rooms = raw.controllers.map(function (r) {
+      var p = splitName(r.current_room || r.control_uuid);
+      return { uuid: r.control_uuid, name: r.current_room || r.control_uuid, floor: p.floor, short: p.short, firstSeen: tms(r.first_seen_utc), rows: [], hrows: [], valves: [] };
+    });
+    rooms.sort(function (a, b) { return floorOrder(a.floor) - floorOrder(b.floor) || a.short.localeCompare(b.short, 'de'); });
+    var byUuid = new Map(rooms.map(function (r) { return [r.uuid, r]; }));
+    var byName = new Map(rooms.map(function (r) { return [r.name, r]; }));
+
+    raw.temperatures.forEach(function (r) {
+      var room = byUuid.get(r.control_uuid); if (!room) return;
+      var t = tms(r.timestamp_utc); if (!isFinite(t)) return;
+      room.rows.push({ t: t, act: num(r.actual_c), tgt: num(r.target_c), op: num(r.operating_mode), mode: num(r.temperature_mode) });
+    });
+    raw.humidity.forEach(function (r) {
+      var room = byUuid.get(r.control_uuid); if (!room) return;
+      var t = tms(r.timestamp_utc); if (!isFinite(t)) return;
+      room.hrows.push({ t: t, v: isTrue(r.available) ? num(r.humidity_pct) : null });
+    });
+
+    var actuators = raw.actuators.map(function (a) {
+      var label = a.current_room || '';
+      var p = splitName(label);
+      return { uuid: a.control_uuid, roomName: label, floor: p.floor, roomShort: p.short, name: String(a.current_name || a.control_uuid).replace(/^Aktuelle\s+Stellantrieb(ö|oe)ffnung\s*/i, '') || a.control_uuid, rows: [] };
+    });
+    var actBy = new Map(actuators.map(function (a) { return [a.uuid, a]; }));
+    raw.valves.forEach(function (r) {
+      var a = actBy.get(r.control_uuid); if (!a) return;
+      var t = tms(r.timestamp_utc); if (!isFinite(t)) return;
+      a.rows.push({ t: t, v: isTrue(r.available) ? num(r.opening_pct) : null });
+    });
+    actuators.sort(function (a, b) { return floorOrder(a.floor) - floorOrder(b.floor) || a.roomShort.localeCompare(b.roomShort, 'de') || a.name.localeCompare(b.name, 'de', { numeric: true }); });
+    actuators.forEach(function (a) {
+      a.s = series(a.rows, ['v']); delete a.rows;
+      var room = byName.get(a.roomName); if (room) room.valves.push(a);
+    });
+
+    var latest = -Infinity, first = Infinity;
+    rooms.forEach(function (r) {
+      r.s = series(r.rows, ['act', 'tgt', 'op', 'mode']); delete r.rows;
+      r.h = series(r.hrows, ['v']); delete r.hrows;
+      var n = r.s.t.length;
+      if (n) { latest = Math.max(latest, r.s.t[n - 1]); first = Math.min(first, r.s.t[0]); }
+    });
+    var outRows = [];
+    raw.outdoor.forEach(function (r) {
+      var t = tms(r.timestamp_utc); if (!isFinite(t)) return;
+      outRows.push({ t: t, v: isTrue(r.available) ? num(r.actual_c) : null });
+    });
+    var outdoor = series(outRows, ['v']);
+
+    // Hausmittel je Messzeitpunkt
+    var acc = new Map();
+    rooms.forEach(function (r) {
+      for (var i = 0; i < r.s.t.length; i++) {
+        var v = r.s.act[i]; if (v == null) continue;
+        var e = acc.get(r.s.t[i]); if (!e) acc.set(r.s.t[i], e = [0, 0, 0, 0]);
+        e[0] += v; e[1]++; if (r.s.tgt[i] != null) { e[2] += r.s.tgt[i]; e[3]++; }
+      }
+    });
+    var minRooms = Math.max(1, Math.ceil(rooms.length * 0.75));
+    var meanRows = [];
+    acc.forEach(function (e, t) { if (e[1] >= minRooms) meanRows.push({ t: t, act: e[0] / e[1], tgt: e[3] ? e[2] / e[3] : null }); });
+    var indoor = series(meanRows, ['act', 'tgt']);
+
+    var hacc = new Map();
+    rooms.forEach(function (r) { for (var i = 0; i < r.h.t.length; i++) { var v = r.h.v[i]; if (v == null) continue; var e = hacc.get(r.h.t[i]); if (!e) hacc.set(r.h.t[i], e = [0, 0]); e[0] += v; e[1]++; } });
+    var hRows = [];
+    hacc.forEach(function (e, t) { if (e[1] >= minRooms) hRows.push({ t: t, v: e[0] / e[1] }); });
+    var humMean = series(hRows, ['v']);
+
+    var firstSeen = Math.min.apply(null, rooms.map(function (r) { return r.firstSeen; }).filter(isFinite).concat([first]));
+    var syncLatest = tms(sync.latest_measurement_utc);
+    if (!isFinite(latest)) latest = isFinite(syncLatest) ? syncLatest : Date.now();
+    var d0 = Math.max(range.from, isFinite(first) ? first : range.from);
+    return {
+      rooms: rooms, byUuid: byUuid, actuators: actuators, outdoor: outdoor, indoor: indoor, humMean: humMean,
+      code: code, sync: sync, latest: latest, firstSeen: firstSeen, domain: [d0, Math.max(latest, d0 + 36e5)], range: range
+    };
+  }
+  function modeLabel(m, cat, v) {
+    if (v == null) return '–';
+    var c = m.code[cat] && m.code[cat][String(v)];
+    return c ? c.label : 'Code ' + v;
+  }
+  function lastIdx(s, maxAgeFrom) { // letzter Index mit Wert, nicht älter als maxAgeFrom
+    for (var i = s.t.length - 1; i >= 0; i--) { if (s.t[i] < maxAgeFrom) return -1; if ((s.act ? s.act[i] : s.v[i]) != null) return i; }
+    return -1;
+  }
+  function inDomain(s, dom) { // Indexbereich in der Domain (+1 Punkt Puffer links)
+    var lo = d3.bisectLeft(s.t, dom[0]); var hi = d3.bisectRight(s.t, dom[1]);
+    return [Math.max(0, lo - 1), hi];
+  }
+  function gapLimit(s) {
+    if (s._gap) return s._gap;
+    if (state.model && state.model.range.hourly) return (s._gap = 3.2 * 36e5);
+    var d = [];
+    for (var i = 1; i < s.t.length; i++) d.push(s.t[i] - s.t[i - 1]);
+    var md = median(d) || 6e5;
+    return (s._gap = Math.max(md * 3.2, 25 * 6e4));
+  }
+  function now(m, room) {
+    var s = room.s; var i = lastIdx(s, m.latest - 45 * 6e4);
+    var hi = lastIdx(room.h, m.latest - 45 * 6e4);
+    var vals = room.valves.map(function (a) { var k = lastIdx(a.s, m.latest - 45 * 6e4); return k < 0 ? null : a.s.v[k]; });
+    var act = i < 0 ? null : s.act[i], tgt = i < 0 ? null : s.tgt[i];
+    return {
+      i: i, act: act, tgt: tgt, d: act != null && tgt != null ? act - tgt : null,
+      mode: i < 0 ? null : s.mode[i], op: i < 0 ? null : s.op[i],
+      hum: hi < 0 ? null : room.h.v[hi], valves: vals, valveMean: mean(vals)
+    };
+  }
+
+  /* ---------- Zustand ---------- */
+  var state = {
+    rangeKey: RANGES[store.get('range')] ? store.get('range') : '24h',
+    room: store.get('room') || null,
+    model: null, loading: false, error: null, lastFetch: 0, tables: {}
+  };
+
+  /* ---------- Tooltip ---------- */
+  var tip = $('tip');
+  function showTip(x, y, title, rows, note) {
+    clear(tip);
+    tip.appendChild(el('div', { class: 't-h' }, title));
+    rows.forEach(function (r) {
+      var row = el('div', { class: 't-r' });
+      row.appendChild(el('b', { class: 'num' }, r[0]));
+      row.appendChild(el('span', { class: 't-s' }, r[1]));
+      tip.appendChild(row);
+    });
+    if (note) tip.appendChild(el('div', { class: 't-s' }, note));
+    tip.hidden = false;
+    var w = tip.offsetWidth, h = tip.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+    var left = x + 14; if (left + w > vw - 8) left = x - w - 14; if (left < 8) left = 8;
+    var top = y - h - 12; if (top < 8) top = y + 18; if (top + h > vh - 8) top = vh - h - 8;
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function hideTip() { tip.hidden = true; }
+  document.addEventListener('pointerdown', function (e) { if (!e.target.closest('.heat')) hideTip(); }, { passive: true });
+  window.addEventListener('scroll', hideTip, { passive: true });
+
+  /* ---------- Status & Kopf ---------- */
+  function relAge(ms) {
+    var min = Math.round(ms / 6e4);
+    if (min < 1) return 'gerade eben';
+    if (min < 60) return 'vor ' + min + ' Min';
+    var h = Math.floor(min / 60);
+    if (h < 48) return 'vor ' + h + ' Std' + (min % 60 && h < 6 ? ' ' + (min % 60) + ' Min' : '');
+    return 'vor ' + Math.round(h / 24) + ' Tagen';
+  }
+  function renderStatus() {
+    var m = state.model, chip = $('status-chip'), label = $('status-label'), text = $('status-text');
+    chip.className = 'chip';
+    if (state.error && !m) { chip.classList.add('err'); label.textContent = 'Fehler'; text.textContent = 'Keine Daten geladen.'; return; }
+    if (!m) return;
+    var age = Date.now() - m.latest;
+    if (CFG.mode === 'snapshot') {
+      chip.classList.add('snap'); label.textContent = 'Momentaufnahme';
+      text.textContent = 'Stand ' + fDayTime(m.latest) + ' · fester Datenstand';
+    } else if (age > 75 * 6e4) {
+      chip.classList.add('stale'); label.textContent = 'Keine neuen Werte';
+      text.textContent = 'Letzter Messwert ' + fDayTime(m.latest) + ' (' + relAge(age) + ')';
+    } else {
+      chip.classList.add('live'); label.textContent = 'Live';
+      text.textContent = 'Stand ' + fDayTime(m.latest) + ' (' + relAge(age) + ')';
+    }
+  }
+  function renderRangeButtons() {
+    Array.prototype.forEach.call($('range').querySelectorAll('button'), function (b) {
+      b.setAttribute('aria-checked', b.dataset.range === state.rangeKey ? 'true' : 'false');
+    });
+    var m = state.model, note = $('range-note');
+    if (m && isFinite(m.firstSeen) && m.latest - m.firstSeen < m.range.ms * 0.95) {
+      note.textContent = 'Aufzeichnung seit ' + fDayTime(m.firstSeen) + ', daher zeigt „' + m.range.label + '“ die gesamte bisherige Aufzeichnung.';
+      note.hidden = false;
+    } else note.hidden = true;
+  }
+  function renderBanner() {
+    var b = $('banner');
+    clear(b);
+    if (!state.error) { b.hidden = true; return; }
+    b.className = 'banner err';
+    var box = el('div');
+    box.appendChild(el('strong', null, state.model ? 'Aktualisierung fehlgeschlagen' : 'Daten konnten nicht geladen werden'));
+    box.appendChild(el('span', null, state.error + (state.model ? ' Angezeigt wird der letzte geladene Stand.' : '')));
+    b.appendChild(box);
+    var btn = el('button', { type: 'button', class: 'btn' }, 'Erneut laden');
+    btn.addEventListener('click', function () { load(true); });
+    b.appendChild(btn);
+    b.hidden = false;
+  }
+
+  /* ---------- Mini-Linien ---------- */
+  function sparkPath(s, key, dom, x, y, gap) {
+    var r = inDomain(s, dom), d = '', pen = false, prevT = null;
+    for (var i = r[0]; i < r[1]; i++) {
+      var v = s[key][i], t = s.t[i];
+      if (t < dom[0]) continue;
+      if (v == null || (prevT != null && t - prevT > gap)) { pen = false; }
+      if (v != null) { d += (pen ? 'L' : 'M') + x(Math.max(t, dom[0])).toFixed(1) + ',' + y(v).toFixed(1); pen = true; }
+      prevT = t;
+    }
+    return d;
+  }
+  function stepPath(s, key, dom, x, y, gap) {
+    var r = inDomain(s, dom), d = '', pen = false, prev = null, prevT = null;
+    for (var i = r[0]; i < r[1]; i++) {
+      var v = s[key][i], t = s.t[i];
+      if (v == null || (prevT != null && t - prevT > gap)) pen = false;
+      if (v != null) {
+        var xx = x(Math.max(t, dom[0])).toFixed(1);
+        if (pen) d += 'H' + xx + 'V' + y(v).toFixed(1);
+        else d += 'M' + xx + ',' + y(v).toFixed(1);
+        pen = true; prev = v;
+      }
+      prevT = t;
+    }
+    if (pen && prev != null) d += 'H' + x(Math.min(dom[1], prevT + gap / 3.2)).toFixed(1);
+    return d;
+  }
+  function drawSpark(svg, s, key, dom, opts) {
+    clear(svg);
+    var w = Math.round(svg.getBoundingClientRect().width) || svg.parentNode.clientWidth || 120, h = opts.h || 26;
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    var r = inDomain(s, dom), vals = [];
+    for (var i = r[0]; i < r[1]; i++) if (s[key][i] != null) vals.push(s[key][i]);
+    if (opts.extra) for (var j = r[0]; j < r[1]; j++) if (s[opts.extra][j] != null) vals.push(s[opts.extra][j]);
+    if (vals.length < 2) return;
+    var lo = opts.lo != null ? opts.lo : d3.min(vals), hi = opts.hi != null ? opts.hi : d3.max(vals);
+    if (hi - lo < (opts.minSpan || 1)) { var c = (hi + lo) / 2; lo = c - (opts.minSpan || 1) / 2; hi = c + (opts.minSpan || 1) / 2; }
+    var x = d3.scaleLinear().domain(dom).range([1, w - 4]);
+    var y = d3.scaleLinear().domain([lo, hi]).range([h - 3, 3]);
+    var gap = gapLimit(s);
+    if (opts.extra) svg.appendChild(sv('path', { d: stepPath(s, opts.extra, dom, x, y, gap), fill: 'none', stroke: PAL['ink-3'], 'stroke-width': 1.25, 'stroke-dasharray': '3 3' }));
+    svg.appendChild(sv('path', { d: sparkPath(s, key, dom, x, y, gap), fill: 'none', stroke: opts.color || PAL['ink-2'], 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    var li = -1; for (var k = r[1] - 1; k >= r[0]; k--) if (s[key][k] != null) { li = k; break; }
+    if (li >= 0) svg.appendChild(sv('circle', { cx: x(s.t[li]), cy: y(s[key][li]), r: 3, fill: opts.color || PAL['ink-2'], stroke: opts.ring || PAL.surface, 'stroke-width': 1.5 }));
+  }
+
+  /* ---------- Kennzahlen ---------- */
+  function renderKPIs(m) {
+    var tiles = $('kpis').querySelectorAll('.kpi');
+    var cur = m.rooms.map(function (r) { return { r: r, n: now(m, r) }; });
+    function set(i, value, unit, sub) {
+      var v = tiles[i].querySelector('.kpi-value'); clear(v);
+      v.appendChild(document.createTextNode(value));
+      if (unit) v.appendChild(el('span', { class: 'unit' }, unit));
+      tiles[i].querySelector('.kpi-sub').textContent = sub || ' ';
+      return tiles[i].querySelector('.kpi-viz');
+    }
+    var acts = cur.map(function (c) { return c.n.act; }), tgts = cur.map(function (c) { return c.n.tgt; });
+    var mi = mean(acts), mt = mean(tgts);
+    var viz = set(0, mi == null ? '–' : nf1.format(mi), '°C', mt == null ? '' : 'Soll Ø ' + fC(mt));
+    clear(viz); var s0 = sv('svg', { 'aria-hidden': 'true' }); viz.appendChild(s0);
+    drawSpark(s0, m.indoor, 'act', m.domain, { color: PAL.s1, minSpan: 1 });
+
+    var oi = lastIdx(m.outdoor, m.latest - 3 * 36e5);
+    var ov = oi < 0 ? null : m.outdoor.v[oi];
+    viz = set(1, ov == null ? '–' : nf1.format(ov), ov == null ? '' : '°C', ov == null ? 'kein Wert verfügbar' : 'Wettermodell · ' + fTime(m.outdoor.t[oi]));
+    clear(viz); var s1 = sv('svg', { 'aria-hidden': 'true' }); viz.appendChild(s1);
+    drawSpark(s1, m.outdoor, 'v', m.domain, { color: PAL.context, minSpan: 2 });
+
+    var cnt = [0, 0, 0], valid = 0;
+    cur.forEach(function (c) { if (c.n.d == null) return; valid++; if (c.n.d < -BAND) cnt[0]++; else if (c.n.d > BAND) cnt[2]++; else cnt[1]++; });
+    viz = set(2, valid ? String(cnt[1]) : '–', valid ? ' von ' + valid : '', cnt[0] + ' darunter · ' + cnt[2] + ' darüber');
+    clear(viz);
+    var bar = el('div', { class: 'stackbar', role: 'img', 'aria-label': cnt[0] + ' Räume unter Soll, ' + cnt[1] + ' im Soll, ' + cnt[2] + ' über Soll' });
+    [[cnt[0], PAL.div[1]], [cnt[1], PAL.neutral], [cnt[2], PAL.div[5]]].forEach(function (p) { if (!p[0]) return; var sp = el('span'); sp.style.flex = String(p[0]); sp.style.background = p[1]; bar.appendChild(sp); });
+    viz.appendChild(bar);
+
+    var hums = cur.filter(function (c) { return c.n.hum != null; });
+    var hm = mean(hums.map(function (c) { return c.n.hum; }));
+    var hmax = hums.slice().sort(function (a, b) { return b.n.hum - a.n.hum; })[0];
+    viz = set(3, hm == null ? '–' : nf0.format(hm), hm == null ? '' : '%', hmax ? 'höchste: ' + hmax.r.short + ' ' + fPct(hmax.n.hum) : 'kein Wert verfügbar');
+    clear(viz); var s3 = sv('svg', { 'aria-hidden': 'true' }); viz.appendChild(s3);
+    drawSpark(s3, m.humMean, 'v', m.domain, { color: PAL.s3, minSpan: 4 });
+
+    var vals = m.actuators.map(function (a) { var k = lastIdx(a.s, m.latest - 45 * 6e4); return k < 0 ? null : a.s.v[k]; }).filter(function (v) { return v != null; });
+    var open = vals.filter(function (v) { return v > 0; }).length, vm = mean(vals);
+    viz = set(4, vals.length ? String(open) : '–', vals.length ? ' von ' + vals.length : '', vm == null ? 'kein Wert verfügbar' : 'Öffnung Ø ' + fPct(vm));
+    clear(viz);
+    if (vm != null) { var mt2 = el('div', { class: 'meter', role: 'img', 'aria-label': 'Mittlere Ventilöffnung ' + fPct(vm) }); var f = el('span'); f.style.width = Math.max(0, Math.min(100, vm)) + '%'; mt2.appendChild(f); viz.appendChild(mt2); }
+
+    var withAct = cur.filter(function (c) { return c.n.act != null; }).sort(function (a, b) { return a.n.act - b.n.act; });
+    if (withAct.length) {
+      var lo = withAct[0], hi = withAct[withAct.length - 1];
+      set(5, nf1.format(lo.n.act) + '–' + nf1.format(hi.n.act), '°C', lo.r.name + ' bis ' + hi.r.name);
+    } else set(5, '–', '', '');
+    tiles[5].querySelector('.kpi-value').classList.add('small');
+    clear(tiles[5].querySelector('.kpi-viz'));
+  }
+
+  /* ---------- Hausschnitt ---------- */
+  var arrowUp = 'M4.5 0.5 L8.5 8 L0.5 8 Z', arrowDown = 'M0.5 1 L8.5 1 L4.5 8.5 Z';
+  function renderHouse(m) {
+    var host = $('house'); clear(host);
+    var roof = sv('svg', { class: 'roof', viewBox: '0 0 100 10', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+    roof.appendChild(sv('path', { d: 'M0.5 9.6 L50 0.6 L99.5 9.6', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.5, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round' }));
+    host.appendChild(roof);
+    var all = [];
+    m.rooms.forEach(function (r) { all.push(r); });
+    // gemeinsame Skala für alle Mini-Verläufe (kleine Vielfache)
+    var lo = Infinity, hi = -Infinity;
+    all.forEach(function (r) { var k = inDomain(r.s, m.domain); for (var i = k[0]; i < k[1]; i++) { [r.s.act[i], r.s.tgt[i]].forEach(function (v) { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }); } });
+    var shared = isFinite(lo) ? { lo: Math.floor(lo * 2) / 2, hi: Math.ceil(hi * 2) / 2 } : {};
+    var floors = FLOORS.map(function (f) { return f.code; });
+    m.rooms.forEach(function (r) { if (floors.indexOf(r.floor) < 0) floors.push(r.floor); });
+    floors.forEach(function (code) {
+      var list = m.rooms.filter(function (r) { return r.floor === code; });
+      if (!list.length) return;
+      if (code === 'UG') { var g = el('div', { class: 'ground', 'aria-hidden': 'true' }); g.appendChild(el('span', null, 'Gelände')); host.appendChild(g); }
+      var fl = el('div', { class: 'floor', role: 'group', 'aria-label': (FLOORS[floorOrder(code)] || { name: code }).name });
+      var lab = el('div', { class: 'floor-label' });
+      lab.appendChild(el('span', { class: 'floor-code' }, code));
+      lab.appendChild(el('span', { class: 'floor-name' }, (FLOORS[floorOrder(code)] || { name: '' }).name));
+      fl.appendChild(lab);
+      var grid = el('div', { class: 'rooms' });
+      list.forEach(function (r) {
+        var n = now(m, r), cls = devClass(n.d);
+        var b = el('button', { type: 'button', class: 'room', 'data-uuid': r.uuid, 'aria-pressed': state.room === r.uuid ? 'true' : 'false' });
+        if (cls >= 0) b.style.background = PAL.tile[cls];
+        var state3 = n.d == null ? '' : n.d < -BAND ? 'unter Soll' : n.d > BAND ? 'über Soll' : 'im Soll';
+        b.setAttribute('aria-label', r.name + ': ' + fC(n.act) + ', Soll ' + fC(n.tgt) + ', ' + fK(n.d) + ' ' + state3 + ', Luftfeuchte ' + fPct(n.hum) + '. Verlauf anzeigen.');
+        b.appendChild(el('span', { class: 'room-name' }, r.short));
+        var main = el('span', { class: 'room-main' });
+        main.appendChild(el('span', { class: 'room-temp' }, fDeg(n.act)));
+        var dl = el('span', { class: 'room-delta num' });
+        if (n.d != null && Math.abs(n.d) > BAND) {
+          var ar = sv('svg', { viewBox: '0 0 9 9', 'aria-hidden': 'true' });
+          ar.appendChild(sv('path', { d: n.d > 0 ? arrowUp : arrowDown, fill: PAL.ink }));
+          dl.appendChild(ar);
+        }
+        dl.appendChild(document.createTextNode(fK(n.d)));
+        main.appendChild(dl);
+        b.appendChild(main);
+        b.appendChild(el('span', { class: 'room-meta' }, 'Soll ' + fDeg(n.tgt) + ' · ' + modeLabel(m, 'temperature_mode', n.mode)));
+        var sp = sv('svg', { class: 'room-spark', 'aria-hidden': 'true' });
+        b.appendChild(sp);
+        var foot = el('span', { class: 'room-foot num' });
+        foot.appendChild(el('span', { title: 'relative Luftfeuchte' }, n.hum == null ? '– r. F.' : fPct(n.hum) + ' r. F.'));
+        var vv = n.valves.filter(function (v) { return v != null; });
+        foot.appendChild(el('span', { title: r.valves.length > 1 ? 'Mittel aus ' + r.valves.length + ' Stellantrieben' : 'Stellantrieb' }, r.valves.length ? 'Ventil ' + fPct(mean(vv)) : 'kein Ventil'));
+        b.appendChild(foot);
+        b.addEventListener('click', function () { selectRoom(r.uuid, true); });
+        grid.appendChild(b);
+        b._spark = function () { drawSpark(sp, r.s, 'act', m.domain, { extra: 'tgt', lo: shared.lo, hi: shared.hi, h: 30, color: PAL.ink, ring: PAL.tile[cls] || PAL['surface-2'] }); };
+      });
+      fl.appendChild(grid);
+      host.appendChild(fl);
+    });
+    drawHouseSparks();
+    // Legende
+    var lg = $('house-legend'); clear(lg);
+    var ds = el('span', { class: 'divscale' });
+    ds.appendChild(el('span', null, 'kälter'));
+    var sw = el('span', { class: 'sw', role: 'img', 'aria-label': 'Farbstufen der Abweichung: ' + DEV_LABELS.join(', ') });
+    PAL.tile.forEach(function (c, i) { var s = el('i', { title: DEV_LABELS[i] }); s.style.background = c; if (i === 3) s.style.boxShadow = 'inset 0 0 0 1px ' + PAL.hair; sw.appendChild(s); });
+    ds.appendChild(sw);
+    ds.appendChild(el('span', null, 'wärmer als Soll'));
+    lg.appendChild(ds);
+    var k1 = el('span'); var kl = el('i', { class: 'key' }); kl.style.color = PAL.ink; k1.appendChild(kl); k1.appendChild(document.createTextNode('Ist')); lg.appendChild(k1);
+    var k2 = el('span'); var kd = el('i', { class: 'key dash' }); kd.style.color = PAL['ink-3']; k2.appendChild(kd); k2.appendChild(document.createTextNode('Soll')); lg.appendChild(k2);
+    lg.appendChild(el('span', { class: 'muted num' }, (shared.lo != null ? 'Mini-Verläufe ' + nf1.format(shared.lo) + '–' + nf1.format(shared.hi) + ' °C, gleiche Skala für alle Räume · ' : '') + 'r. F. = relative Luftfeuchte'));
+  }
+  function drawHouseSparks() { Array.prototype.forEach.call($('house').querySelectorAll('.room'), function (b) { if (b._spark) b._spark(); }); }
+
+  /* ---------- Verlauf je Raum ---------- */
+  function fillRoomSelect(m) {
+    var s = $('room-select'); clear(s);
+    FLOORS.forEach(function (f) {
+      var list = m.rooms.filter(function (r) { return r.floor === f.code; });
+      if (!list.length) return;
+      var g = el('optgroup', { label: f.name });
+      list.forEach(function (r) { g.appendChild(el('option', { value: r.uuid }, r.name)); });
+      s.appendChild(g);
+    });
+    m.rooms.filter(function (r) { return floorOrder(r.floor) === 99; }).forEach(function (r) { s.appendChild(el('option', { value: r.uuid }, r.name)); });
+    s.value = state.room;
+  }
+  function selectRoom(uuid, scroll) {
+    state.room = uuid; store.set('room', uuid);
+    $('room-select').value = uuid;
+    Array.prototype.forEach.call($('house').querySelectorAll('.room'), function (b) { b.setAttribute('aria-pressed', b.dataset.uuid === uuid ? 'true' : 'false'); });
+    renderDetail(state.model);
+    if (!$('detail-table').hidden) renderTable('detail');
+    if (scroll) {
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      $('detail-card').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    }
+  }
+  function valueAt(s, key, t, maxGap) { // Wert am Zeitpunkt t (letzter Messwert davor)
+    var i = d3.bisectRight(s.t, t) - 1;
+    if (i < 0 || t - s.t[i] > maxGap) return { i: -1, v: null };
+    return { i: i, v: s[key][i] };
+  }
+  function renderDetail(m) {
+    var host = $('detail-chart'); clear(host);
+    var room = m.byUuid.get(state.room);
+    if (!room) { host.appendChild(el('p', { class: 'empty' }, 'Kein Raum gewählt.')); return; }
+    var dom = m.domain, W = host.clientWidth || 600, mobile = W < 560;
+    var M = { l: 38, r: 12 };
+    var x = d3.scaleLinear().domain(dom).range([M.l, W - M.r]);
+    var valveSeries = room.valves;
+    var vs = { t: [], v: [] };
+    if (valveSeries.length) { // Mittel der Stellantriebe je Zeitpunkt
+      var vm = new Map();
+      valveSeries.forEach(function (a) { for (var i = 0; i < a.s.t.length; i++) { if (a.s.v[i] == null) continue; var e = vm.get(a.s.t[i]); if (!e) vm.set(a.s.t[i], e = [0, 0]); e[0] += a.s.v[i]; e[1]++; } });
+      var rows = []; vm.forEach(function (e, t) { rows.push({ t: t, v: e[0] / e[1] }); });
+      vs = series(rows, ['v']);
+    }
+    var gapT = gapLimit(room.s), gapH = gapLimit(room.h), gapV = gapLimit(vs), gapO = Math.max(gapLimit(m.outdoor), 2 * 36e5);
+    var small = mobile ? 78 : 88;
+    var panels = [
+      { key: 'temp', h: mobile ? 190 : 230 },
+      { key: 'out', h: small },
+      { key: 'hum', h: small },
+      { key: 'valve', h: small, axis: true }
+    ];
+    var ticks = timeTicks(dom[0], dom[1], Math.max(3, Math.floor((W - M.l - M.r) / (mobile ? 72 : 96))));
+    var cross = [], heads = {};
+    function note(svg, top, bottom, text) { svg.appendChild(sv('text', { x: (M.l + W) / 2, y: (top + bottom) / 2 + 4, 'text-anchor': 'middle' }, text)); }
+    function collect(s, key, out) { var k = inDomain(s, dom); for (var i = k[0]; i < k[1]; i++) if (s.t[i] >= dom[0] && s[key][i] != null) out.push(s[key][i]); return out; }
+
+    panels.forEach(function (p) {
+      var wrap = el('div', { class: 'panel' });
+      var head = el('div', { class: 'panel-head' });
+      heads[p.key] = head;
+      wrap.appendChild(head);
+      var H = p.h + (p.axis ? 24 : 0);
+      var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img' });
+      wrap.appendChild(svg);
+      host.appendChild(wrap);
+      var top = 8, bottom = p.h - 4, y, ext, lo, hi, c;
+      if (p.key === 'temp') {
+        ext = collect(room.s, 'tgt', collect(room.s, 'act', []));
+        lo = d3.min(ext); hi = d3.max(ext);
+        if (lo == null) { lo = 18; hi = 24; }
+        if (hi - lo < 3) { c = (lo + hi) / 2; lo = c - 1.5; hi = c + 1.5; }
+        y = d3.scaleLinear().domain([lo - 0.3, hi + 0.3]).nice().range([bottom, top]);
+        svg.setAttribute('aria-label', 'Ist- und Solltemperatur ' + room.name);
+      } else if (p.key === 'out') {
+        ext = collect(m.outdoor, 'v', []);
+        lo = d3.min(ext); hi = d3.max(ext);
+        if (lo == null) { lo = 5; hi = 15; }
+        if (hi - lo < 4) { c = (lo + hi) / 2; lo = c - 2; hi = c + 2; }
+        y = d3.scaleLinear().domain([lo - 0.5, hi + 0.5]).nice().range([bottom, top]);
+        svg.setAttribute('aria-label', 'Außentemperatur laut Wettermodell');
+      } else if (p.key === 'hum') {
+        ext = collect(room.h, 'v', []);
+        lo = d3.min(ext); hi = d3.max(ext);
+        if (lo == null) { lo = 40; hi = 60; }
+        y = d3.scaleLinear().domain([Math.max(0, Math.min(lo, 40) - 2), Math.min(100, Math.max(hi, 60) + 2)]).nice().range([bottom, top]);
+        svg.setAttribute('aria-label', 'Luftfeuchte ' + room.name);
+      } else {
+        y = d3.scaleLinear().domain([0, 100]).range([bottom, top]);
+        svg.setAttribute('aria-label', 'Ventilöffnung ' + room.name);
+      }
+      p.y = y;
+      var yt;
+      if (p.key === 'temp') yt = y.ticks(mobile ? 4 : 5);
+      else if (p.key === 'valve') yt = [0, 50, 100];
+      else { var dd = y.domain(); yt = d3.ticks(dd[0], dd[1], 2); }
+      var unit = p.key === 'temp' || p.key === 'out' ? '°' : ' %';
+      yt.forEach(function (v) {
+        svg.appendChild(sv('line', { x1: M.l, x2: W - M.r, y1: y(v), y2: y(v), stroke: PAL.hair, 'stroke-width': 1 }));
+        svg.appendChild(sv('text', { x: M.l - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'num' }, fTick(v) + unit));
+      });
+      ticks.forEach(function (tk) {
+        if (tk.strong) svg.appendChild(sv('line', { x1: x(tk.t), x2: x(tk.t), y1: top, y2: bottom, stroke: PAL.hair, 'stroke-width': 1 }));
+      });
+      if (p.key === 'hum') { // Komfortbereich 40–60 %
+        var y40 = y(40), y60 = y(60);
+        svg.insertBefore(sv('rect', { x: M.l, width: W - M.l - M.r, y: y60, height: Math.max(0, y40 - y60), fill: PAL.s3, 'fill-opacity': PAL.dark ? 0.10 : 0.07 }), svg.firstChild);
+      }
+      if (p.axis) {
+        svg.appendChild(sv('line', { x1: M.l, x2: W - M.r, y1: bottom + 0.5, y2: bottom + 0.5, stroke: PAL.rule, 'stroke-width': 1 }));
+        ticks.forEach(function (tk) {
+          svg.appendChild(sv('line', { x1: x(tk.t), x2: x(tk.t), y1: bottom, y2: bottom + 4, stroke: PAL.rule }));
+          var tx = sv('text', { x: x(tk.t), y: bottom + 17, 'text-anchor': 'middle', class: 'num' }, tk.label);
+          if (tk.strong) tx.setAttribute('style', 'fill:' + PAL['ink-2'] + ';font-weight:600');
+          svg.appendChild(tx);
+        });
+      }
+      var lineAttrs = function (d, color) { return { d: d, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }; };
+      if (p.key === 'temp') {
+        svg.appendChild(sv('path', { d: stepPath(room.s, 'tgt', dom, x, y, gapT), fill: 'none', stroke: PAL['ink-3'], 'stroke-width': 1.5, 'stroke-dasharray': '5 4' }));
+        svg.appendChild(sv('path', lineAttrs(sparkPath(room.s, 'act', dom, x, y, gapT), PAL.s1)));
+      } else if (p.key === 'out') {
+        if (ext.length) svg.appendChild(sv('path', lineAttrs(sparkPath(m.outdoor, 'v', dom, x, y, gapO), PAL.context)));
+        else note(svg, top, bottom, 'Keine Außenwerte im Zeitraum');
+      } else if (p.key === 'hum') {
+        if (ext.length) svg.appendChild(sv('path', lineAttrs(sparkPath(room.h, 'v', dom, x, y, gapH), PAL.s3)));
+        else note(svg, top, bottom, 'Keine Luftfeuchte-Werte im Zeitraum');
+      } else if (vs.t.length) {
+        var area = stepPath(vs, 'v', dom, x, y, gapV);
+        area.split('M').filter(Boolean).forEach(function (sg) { // Schleier unter der Stufenlinie
+          var mm = /^([\d.]+),/.exec(sg);
+          if (mm) svg.appendChild(sv('path', { d: 'M' + sg + 'V' + y(0) + 'H' + mm[1] + 'Z', fill: PAL.s2, 'fill-opacity': 0.12, stroke: 'none' }));
+        });
+        svg.appendChild(sv('path', { d: area, fill: 'none', stroke: PAL.s2, 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+      } else {
+        note(svg, top, bottom, valveSeries.length ? 'Keine Ventilwerte im Zeitraum' : 'Diesem Raum ist kein Stellantrieb zugeordnet');
+      }
+      // Fadenkreuz
+      var g = sv('g', { 'pointer-events': 'none', visibility: 'hidden' });
+      g.appendChild(sv('line', { y1: top - 4, y2: p.axis ? bottom : p.h + 12, stroke: PAL['ink-3'], 'stroke-width': 1 }));
+      var dots = [];
+      var dotColors = p.key === 'temp' ? [PAL.s1, PAL['ink-3']] : p.key === 'out' ? [PAL.context] : p.key === 'hum' ? [PAL.s3] : [PAL.s2];
+      dotColors.forEach(function (col) { var d = sv('circle', { r: 4, fill: col, stroke: PAL.surface, 'stroke-width': 2 }); g.appendChild(d); dots.push(d); });
+      svg.appendChild(g);
+      cross.push({ g: g, dots: dots, p: p });
+      var hit = sv('rect', { x: M.l, y: 0, width: Math.max(0, W - M.l - M.r), height: H, fill: 'transparent' });
+      if (p.key === 'temp') { hit.setAttribute('tabindex', '0'); hit.setAttribute('aria-label', 'Zeitpunkt mit den Pfeiltasten wählen'); }
+      svg.appendChild(hit);
+      hit.addEventListener('pointermove', onMove);
+      hit.addEventListener('pointerdown', onMove);
+      hit.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') setCursor(null); });
+      hit.addEventListener('keydown', onKey);
+      hit.addEventListener('blur', function () { setCursor(null); });
+    });
+
+    var cursorT = null;
+    function onMove(e) {
+      var svg = e.currentTarget.ownerSVGElement, rect = svg.getBoundingClientRect();
+      var px = (e.clientX - rect.left) * (W / rect.width);
+      var t = x.invert(Math.max(M.l, Math.min(W - M.r, px)));
+      var k = d3.bisectCenter(room.s.t, t); // auf nächsten Messpunkt einrasten
+      if (room.s.t.length && Math.abs(room.s.t[k] - t) < gapT) t = Math.max(dom[0], room.s.t[k]);
+      setCursor(t);
+    }
+    function onKey(e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Escape') return;
+      e.preventDefault();
+      if (e.key === 'Escape') { setCursor(null); return; }
+      var r = inDomain(room.s, dom);
+      var k = cursorT == null ? r[1] - 1 : d3.bisectCenter(room.s.t, cursorT) + (e.key === 'ArrowRight' ? 1 : -1);
+      k = Math.max(r[0], Math.min(r[1] - 1, k));
+      if (k >= 0 && room.s.t[k] != null) setCursor(Math.max(dom[0], room.s.t[k]));
+    }
+    function setCursor(t) {
+      cursorT = t;
+      cross.forEach(function (c) {
+        if (t == null) { c.g.setAttribute('visibility', 'hidden'); return; }
+        c.g.setAttribute('visibility', 'visible');
+        var xx = x(t);
+        c.g.firstChild.setAttribute('x1', xx); c.g.firstChild.setAttribute('x2', xx);
+        var vals;
+        if (c.p.key === 'temp') vals = [valueAt(room.s, 'act', t, gapT).v, valueAt(room.s, 'tgt', t, gapT).v];
+        else if (c.p.key === 'out') vals = [valueAt(m.outdoor, 'v', t, gapO).v];
+        else if (c.p.key === 'hum') vals = [valueAt(room.h, 'v', t, gapH).v];
+        else vals = [valueAt(vs, 'v', t, gapV).v];
+        c.dots.forEach(function (d, i) {
+          if (vals[i] == null) { d.setAttribute('visibility', 'hidden'); return; }
+          d.setAttribute('visibility', 'visible'); d.setAttribute('cx', xx); d.setAttribute('cy', c.p.y(vals[i]));
+        });
+      });
+      readout(t);
+    }
+    function ro(parent, value, label, keyColor, dashed) {
+      var s = el('span', { class: 'ro' });
+      if (keyColor) { var k = el('i', { class: 'key' + (dashed ? ' dash' : '') }); k.style.color = keyColor; s.appendChild(k); }
+      s.appendChild(el('b', { class: 'num' }, value));
+      if (label) s.appendChild(el('span', null, label));
+      parent.appendChild(s);
+    }
+    function readout(t) {
+      var at = t == null ? m.latest : t;
+      var fresh = t == null ? 45 * 6e4 : 0;
+      var a = valueAt(room.s, 'act', at, fresh || gapT), tg = valueAt(room.s, 'tgt', at, fresh || gapT);
+      var md = a.i >= 0 ? room.s.mode[a.i] : null;
+      var head = heads.temp; clear(head);
+      head.appendChild(el('span', { class: 'ro-time num' }, (t == null ? 'Stand ' : '') + fDayTime(t == null ? (a.i >= 0 ? room.s.t[a.i] : m.latest) : t)));
+      ro(head, fC(a.v), 'Ist', PAL.s1);
+      ro(head, fC(tg.v), 'Soll', PAL['ink-3'], true);
+      ro(head, fK(a.v != null && tg.v != null ? a.v - tg.v : null), 'Abweichung');
+      ro(head, modeLabel(m, 'temperature_mode', md), 'Modus');
+
+      head = heads.out; clear(head);
+      head.appendChild(el('span', { class: 'ttl' }, 'Außentemperatur'));
+      ro(head, fC(valueAt(m.outdoor, 'v', at, t == null ? 3 * 36e5 : gapO).v), '', PAL.context);
+      head.appendChild(el('span', { class: 'muted' }, 'Wettermodell, kein Haussensor'));
+
+      head = heads.hum; clear(head);
+      head.appendChild(el('span', { class: 'ttl' }, 'Luftfeuchte'));
+      ro(head, fPct(valueAt(room.h, 'v', at, fresh || gapH).v), '', PAL.s3);
+      head.appendChild(el('span', { class: 'muted' }, 'Bereich 40–60 % hinterlegt'));
+
+      head = heads.valve; clear(head);
+      head.appendChild(el('span', { class: 'ttl' }, valveSeries.length > 1 ? 'Ventilöffnung Ø ' + valveSeries.length + ' Stellantriebe' : 'Ventilöffnung'));
+      if (valveSeries.length) {
+        ro(head, fPct(valueAt(vs, 'v', at, fresh || gapV).v), '', PAL.s2);
+        if (valveSeries.length > 1) valveSeries.forEach(function (va) { ro(head, fPct(valueAt(va.s, 'v', at, fresh || gapLimit(va.s)).v), va.name); });
+        else head.appendChild(el('span', { class: 'muted' }, valveSeries[0].name));
+      }
+    }
+    readout(null);
+  }
+
+  /* ---------- Heatmap ---------- */
+  function drawHeatmap(host, cfg) {
+    clear(host);
+    var rows = cfg.rows;
+    if (!rows.length) { host.appendChild(el('p', { class: 'empty' }, cfg.empty || 'Keine Daten im Zeitraum.')); return; }
+    var W = host.clientWidth || 600, mobile = W < 560;
+    var rowH = mobile ? 14 : 16, rowGap = 2, groupGap = mobile ? 10 : 12, subGap = cfg.subGroups ? 4 : 0;
+    var floorW = 28;
+    var measure = sv('svg', { width: 10, height: 10 }); host.appendChild(measure);
+    var probe = sv('text', { 'font-size': 12 }); measure.appendChild(probe);
+    function textW(str, size) { probe.setAttribute('font-size', size); probe.textContent = str; return probe.getComputedTextLength ? probe.getComputedTextLength() : str.length * size * 0.55; }
+    var maxP = 0, maxS = 0;
+    rows.forEach(function (r) { if (r.label) maxP = Math.max(maxP, textW(r.label, 12)); if (r.sub) maxS = Math.max(maxS, textW(r.sub, 11.5)); });
+    var subW = maxS ? Math.ceil(maxS) + 10 : 0;
+    var labelW = Math.min(Math.ceil(maxP) + subW + 12, mobile ? 112 + subW * 0.5 : 200);
+    var primW = labelW - subW - 8;
+    function fit(str) { // zu lange Raumnamen mit … kürzen
+      if (!str || textW(str, 12) <= primW) return str;
+      var n = str.length;
+      while (n > 1 && textW(str.slice(0, n) + '…', 12) > primW) n--;
+      return str.slice(0, n).replace(/\s+$/, '') + '…';
+    }
+    rows.forEach(function (r) { r.shown = fit(r.label); });
+    host.removeChild(measure);
+    var L = floorW + labelW, R = 6;
+    // Zeilenpositionen
+    var y = 0, pos = [], prev = null, prevSub = null, groups = [];
+    rows.forEach(function (r) {
+      if (prev !== null && r.group !== prev) y += groupGap;
+      else if (cfg.subGroups && prevSub !== null && r.subGroup !== prevSub) y += subGap;
+      if (r.group !== prev) groups.push({ code: r.group, y0: y });
+      pos.push(y);
+      y += rowH + rowGap;
+      groups[groups.length - 1].y1 = y - rowGap;
+      prev = r.group; prevSub = r.subGroup;
+    });
+    var plotH = y - rowGap, axisH = 24, H = plotH + axisH;
+    var dom = cfg.domain;
+    var x = d3.scaleLinear().domain(dom).range([L, W - R]);
+    var dpr = window.devicePixelRatio || 1;
+    var canvas = el('canvas', { width: Math.round(W * dpr), height: Math.round(plotH * dpr), 'aria-hidden': 'true' });
+    canvas.style.width = W + 'px'; canvas.style.height = plotH + 'px';
+    host.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    rows.forEach(function (r, ri) {
+      var s = r.s, k = inDomain(s, dom), gap = gapLimit(s);
+      var step = Math.min(gap / 3.2, 36e5);
+      ctx.fillStyle = PAL['surface-2'];
+      ctx.fillRect(L, pos[ri], W - R - L, rowH);
+      for (var i = k[0]; i < k[1]; i++) {
+        var v = cfg.value(r, i); if (v == null) continue;
+        var t0 = Math.max(s.t[i], dom[0]);
+        var tn = i + 1 < s.t.length ? s.t[i + 1] : dom[1];
+        var t1 = Math.min(tn - s.t[i] > gap ? s.t[i] + step : tn, dom[1]);
+        if (i === s.t.length - 1) t1 = Math.min(Math.max(t1, s.t[i] + step), dom[1]);
+        var x0 = Math.floor(x(t0)), x1 = Math.ceil(x(t1));
+        if (x1 <= x0) x1 = x0 + 1;
+        ctx.fillStyle = cfg.color(v);
+        ctx.fillRect(x0, pos[ri], x1 - x0, rowH);
+      }
+    });
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': cfg.aria });
+    groups.forEach(function (g) {
+      svg.appendChild(sv('text', { x: 0, y: (g.y0 + g.y1) / 2 + 4.5, class: 'floor-t' }, g.code));
+    });
+    rows.forEach(function (r, ri) {
+      if (r.shown) { var lt = sv('text', { x: floorW, y: pos[ri] + rowH / 2 + 4 }, r.shown); if (r.shown !== r.label) lt.appendChild(sv('title', null, r.label)); svg.appendChild(lt); }
+      if (r.sub) svg.appendChild(sv('text', { x: L - 8, y: pos[ri] + rowH / 2 + 4, 'text-anchor': 'end', class: 'tick' }, r.sub));
+    });
+    var ticks = timeTicks(dom[0], dom[1], Math.max(3, Math.floor((W - L) / (mobile ? 70 : 96))));
+    ticks.forEach(function (tk) {
+      svg.appendChild(sv('line', { x1: x(tk.t), x2: x(tk.t), y1: plotH, y2: plotH + 4, stroke: PAL.rule }));
+      var tx = sv('text', { x: x(tk.t), y: plotH + 17, 'text-anchor': 'middle', class: 'tick num' }, tk.label);
+      if (tk.strong) tx.setAttribute('style', 'fill:' + PAL['ink-2'] + ';font-weight:600');
+      svg.appendChild(tx);
+      if (tk.strong) svg.appendChild(sv('line', { x1: x(tk.t), x2: x(tk.t), y1: 0, y2: plotH, stroke: PAL.surface, 'stroke-width': 1.5, 'stroke-opacity': 0.9 }));
+    });
+    var outline = sv('rect', { fill: 'none', stroke: PAL.ink, 'stroke-width': 1.5, visibility: 'hidden', rx: 2, 'pointer-events': 'none' });
+    svg.appendChild(outline);
+    var hit = sv('rect', { x: L, y: 0, width: Math.max(0, W - R - L), height: plotH, fill: 'transparent' });
+    svg.appendChild(hit);
+    host.appendChild(svg);
+    function pick(e) {
+      var rect = svg.getBoundingClientRect();
+      var px = (e.clientX - rect.left) * (W / rect.width), py = (e.clientY - rect.top) * (H / rect.height);
+      var ri = -1;
+      for (var i = 0; i < pos.length; i++) if (py >= pos[i] - rowGap && py <= pos[i] + rowH + rowGap) { ri = i; break; }
+      if (ri < 0) { outline.setAttribute('visibility', 'hidden'); hideTip(); return; }
+      var r = rows[ri], t = x.invert(px), s = r.s;
+      var k = d3.bisectRight(s.t, t) - 1;
+      if (k < 0 || t - s.t[k] > gapLimit(s)) { outline.setAttribute('visibility', 'hidden'); hideTip(); return; }
+      var t1 = k + 1 < s.t.length ? s.t[k + 1] : dom[1];
+      var x0 = Math.floor(x(Math.max(s.t[k], dom[0]))), x1 = Math.max(x0 + 3, Math.ceil(x(Math.min(t1, dom[1]))));
+      outline.setAttribute('x', x0 - 1); outline.setAttribute('y', pos[ri] - 1); outline.setAttribute('width', x1 - x0 + 2); outline.setAttribute('height', rowH + 2);
+      outline.setAttribute('visibility', 'visible');
+      var tt = cfg.tooltip(r, k);
+      showTip(e.clientX, e.clientY, tt.title, tt.rows, tt.note);
+    }
+    hit.addEventListener('pointermove', pick);
+    hit.addEventListener('pointerdown', pick);
+    hit.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { outline.setAttribute('visibility', 'hidden'); hideTip(); } });
+  }
+  function renderHeatmaps(m) {
+    var dom = m.domain;
+    drawHeatmap($('dev-heat'), {
+      domain: dom, aria: 'Abweichung vom Sollwert je Raum über die Zeit',
+      rows: m.rooms.map(function (r) { return { label: r.short, group: r.floor, s: r.s, room: r }; }),
+      value: function (r, i) { var a = r.s.act[i], t = r.s.tgt[i]; return a == null || t == null ? null : a - t; },
+      color: function (d) { return PAL.div[devClass(d)]; },
+      tooltip: function (r, i) {
+        var a = r.s.act[i], t = r.s.tgt[i];
+        return { title: r.room.name + ' · ' + fDayTime(r.s.t[i]), rows: [[fK(a - t), 'Abweichung'], [fC(a), 'Ist'], [fC(t), 'Soll'], [modeLabel(m, 'temperature_mode', r.s.mode[i]), 'Modus']] };
+      }
+    });
+    var dl = $('dev-legend'); clear(dl);
+    var ds = el('span', { class: 'divscale' });
+    var sw = el('span', { class: 'sw', role: 'img', 'aria-label': 'Farbstufen: ' + DEV_LABELS.join(', ') });
+    PAL.div.forEach(function (c, i) { var s = el('i', { title: DEV_LABELS[i] }); s.style.background = c; sw.appendChild(s); });
+    ds.appendChild(el('span', { class: 'num' }, '≤ −3 K'));
+    ds.appendChild(sw);
+    ds.appendChild(el('span', { class: 'num' }, '≥ +3 K'));
+    dl.appendChild(ds);
+    dl.appendChild(el('span', { class: 'muted' }, 'Stufen: ±0,5 · ±1,5 · ±3 K'));
+
+    var hlo = 30, hhi = 80;
+    drawHeatmap($('hum-heat'), {
+      domain: dom, aria: 'Relative Luftfeuchte je Raum über die Zeit', empty: 'Keine Luftfeuchte-Werte im Zeitraum.',
+      rows: m.rooms.filter(function (r) { return r.h.t.length; }).map(function (r) { return { label: r.short, group: r.floor, s: r.h, room: r }; }),
+      value: function (r, i) { return r.s.v[i]; },
+      color: function (v) { return seqColor(PAL.s3, v, hlo, hhi); },
+      tooltip: function (r, i) { return { title: r.room.name + ' · ' + fDayTime(r.s.t[i]), rows: [[fPct(r.s.v[i]), 'relative Luftfeuchte']] }; }
+    });
+    seqLegend($('hum-legend'), PAL.s3, hlo, hhi, '%', 'Werte unter 30 % und über 80 % in der Endfarbe');
+
+    drawHeatmap($('valve-heat'), {
+      domain: dom, aria: 'Ventilöffnung je Stellantrieb über die Zeit', subGroups: true, empty: 'Keine Ventilwerte im Zeitraum.',
+      rows: (function () {
+        var out = [], last = null;
+        m.actuators.forEach(function (a) {
+          out.push({ label: a.roomName === last ? '' : a.roomShort, sub: a.name, group: a.floor, subGroup: a.roomName, s: a.s, act: a });
+          last = a.roomName;
+        });
+        return out;
+      })(),
+      value: function (r, i) { return r.s.v[i]; },
+      color: function (v) { return v <= 0 ? PAL.neutral : mix(PAL.s2, PAL.surface, 0.3 + 0.7 * Math.min(1, v / 100)); },
+      tooltip: function (r, i) { return { title: r.act.roomName + ' · ' + r.act.name, rows: [[fPct(r.s.v[i]), 'Öffnung']], note: fDayTime(r.s.t[i]) }; }
+    });
+    var vl = $('valve-legend'); clear(vl);
+    var cs = el('span', { class: 'seqscale' }); var ci = el('i', { class: 'closed', role: 'img', 'aria-label': 'geschlossen' }); ci.style.background = PAL.neutral; cs.appendChild(ci); cs.appendChild(el('span', null, 'geschlossen')); vl.appendChild(cs);
+    var os = el('span', { class: 'seqscale' }); os.appendChild(el('span', { class: 'num' }, '1 %'));
+    var ob = el('i', { role: 'img', 'aria-label': 'Farbskala geöffnet von 1 bis 100 %' }); ob.style.background = 'linear-gradient(90deg,' + mix(PAL.s2, PAL.surface, 0.3) + ',' + PAL.s2 + ')'; os.appendChild(ob);
+    os.appendChild(el('span', { class: 'num' }, '100 % geöffnet')); vl.appendChild(os);
+    vl.appendChild(el('span', { class: 'muted' }, m.actuators.length + ' Stellantriebe'));
+  }
+  function seqLegend(host, hex, lo, hi, unit, note) {
+    clear(host);
+    var s = el('span', { class: 'seqscale' });
+    s.appendChild(el('span', { class: 'num' }, nf0.format(lo) + ' ' + unit));
+    var bar = el('i', { role: 'img', 'aria-label': 'Farbskala von ' + lo + ' bis ' + hi + ' ' + unit });
+    var stops = []; for (var i = 0; i <= 8; i++) stops.push(seqColor(hex, lo + (hi - lo) * i / 8, lo, hi) + ' ' + (i * 12.5) + '%');
+    bar.style.background = 'linear-gradient(90deg,' + stops.join(',') + ')';
+    s.appendChild(bar);
+    s.appendChild(el('span', { class: 'num' }, nf0.format(hi) + ' ' + unit));
+    host.appendChild(s);
+    if (note) host.appendChild(el('span', { class: 'muted' }, note));
+  }
+
+  /* ---------- Tabellen ---------- */
+  function table(host, head, rows) {
+    clear(host);
+    var t = el('table'), th = el('thead'), tr = el('tr');
+    head.forEach(function (h) { tr.appendChild(el('th', h[1] ? { class: 'r', scope: 'col' } : { scope: 'col' }, h[0])); });
+    th.appendChild(tr); t.appendChild(th);
+    var tb = el('tbody');
+    rows.forEach(function (r) {
+      var row = el('tr');
+      r.forEach(function (c, i) { row.appendChild(el('td', head[i][1] ? { class: 'r' } : null, c == null ? '–' : String(c))); });
+      tb.appendChild(row);
+    });
+    t.appendChild(tb); host.appendChild(t);
+  }
+  function statsIn(s, key, dom) {
+    var k = inDomain(s, dom), v = [];
+    for (var i = k[0]; i < k[1]; i++) if (s.t[i] >= dom[0] && s[key][i] != null) v.push(s[key][i]);
+    return { n: v.length, mean: mean(v), min: v.length ? d3.min(v) : null, max: v.length ? d3.max(v) : null, vals: v };
+  }
+  function renderTable(which) {
+    var m = state.model; if (!m) return;
+    var dom = m.domain;
+    if (which === 'house') {
+      table($('house-table'), [['Raum'], ['Etage'], ['Ist', 1], ['Soll', 1], ['Abweichung', 1], ['Modus'], ['Luftfeuchte', 1], ['Ventil(e)', 1]],
+        m.rooms.map(function (r) { var n = now(m, r); return [r.short, r.floor, fC(n.act), fC(n.tgt), fK(n.d), modeLabel(m, 'temperature_mode', n.mode), fPct(n.hum), r.valves.length ? n.valves.map(fPct).join(' · ') : '–']; }));
+    } else if (which === 'detail') {
+      var room = m.byUuid.get(state.room); if (!room) return;
+      var rows = [], k = inDomain(room.s, dom);
+      for (var i = k[1] - 1; i >= k[0]; i--) {
+        var t = room.s.t[i]; if (t < dom[0]) continue;
+        var a = room.s.act[i], g = room.s.tgt[i];
+        var hv = valueAt(room.h, 'v', t, 15 * 6e4).v;
+        var vv = room.valves.map(function (va) { return valueAt(va.s, 'v', t, 15 * 6e4).v; });
+        var ov = valueAt(m.outdoor, 'v', t, 36e5).v;
+        rows.push([fDayTime(t), fC(a), fC(g), fK(a != null && g != null ? a - g : null), modeLabel(m, 'temperature_mode', room.s.mode[i]), modeLabel(m, 'operating_mode', room.s.op[i]), fPct(hv), room.valves.length ? fPct(mean(vv)) : '–', fC(ov)]);
+      }
+      table($('detail-table'), [['Zeit'], ['Ist', 1], ['Soll', 1], ['Abweichung', 1], ['Modus'], ['Betriebsart'], ['Luftfeuchte', 1], ['Ventile Ø', 1], ['Außen', 1]], rows);
+    } else if (which === 'dev') {
+      table($('dev-table'), [['Raum'], ['Ø Abweichung', 1], ['Anteil im Soll', 1], ['Anteil darunter', 1], ['Min Ist', 1], ['Max Ist', 1], ['Messpunkte', 1]],
+        m.rooms.map(function (r) {
+          var k = inDomain(r.s, dom), d = [];
+          for (var i = k[0]; i < k[1]; i++) if (r.s.t[i] >= dom[0] && r.s.act[i] != null && r.s.tgt[i] != null) d.push(r.s.act[i] - r.s.tgt[i]);
+          var inB = d.filter(function (x) { return Math.abs(x) <= BAND; }).length, under = d.filter(function (x) { return x < -BAND; }).length;
+          var st = statsIn(r.s, 'act', dom);
+          return [r.name, fK(mean(d)), d.length ? fPct(100 * inB / d.length) : '–', d.length ? fPct(100 * under / d.length) : '–', fC(st.min), fC(st.max), nfInt.format(d.length)];
+        }));
+    } else if (which === 'hum') {
+      table($('hum-table'), [['Raum'], ['Aktuell', 1], ['Ø', 1], ['Min', 1], ['Max', 1], ['Messpunkte', 1]],
+        m.rooms.map(function (r) { var st = statsIn(r.h, 'v', dom), n = now(m, r); return [r.name, fPct(n.hum), fPct(st.mean), fPct(st.min), fPct(st.max), nfInt.format(st.n)]; }));
+    } else if (which === 'valve') {
+      table($('valve-table'), [['Stellantrieb'], ['Raum'], ['Aktuell', 1], ['Ø', 1], ['Max', 1], ['Anteil geöffnet', 1]],
+        m.actuators.map(function (a) {
+          var st = statsIn(a.s, 'v', dom), li = lastIdx(a.s, m.latest - 45 * 6e4);
+          var open = st.vals.filter(function (v) { return v > 0; }).length;
+          return [a.name, a.roomName, fPct(li < 0 ? null : a.s.v[li]), fPct(st.mean), fPct(st.max), st.n ? fPct(100 * open / st.n) : '–'];
+        }));
+    }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-table]'), function (b) {
+    b.addEventListener('click', function () {
+      var w = b.dataset.table, box = $(w + '-table');
+      var show = box.hidden;
+      box.hidden = !show; b.setAttribute('aria-pressed', show ? 'true' : 'false');
+      b.textContent = show ? 'Tabelle ausblenden' : 'Tabelle';
+      if (show) renderTable(w);
+    });
+  });
+
+  /* ---------- Daten & Quelle ---------- */
+  function renderFacts(m) {
+    var dl = $('facts'); clear(dl);
+    function row(k, v, href) {
+      dl.appendChild(el('dt', null, k));
+      var dd = el('dd', { class: 'num' });
+      if (href) { var a = el('a', { href: href, target: '_blank', rel: 'noopener' }, v); dd.appendChild(a); } else dd.textContent = v;
+      dl.appendChild(dd);
+    }
+    row('Datenquelle', 'Google Sheet „loxone_climate“', 'https://docs.google.com/spreadsheets/d/' + CFG.sheetId + '/edit?gid=10000');
+    row('Abruf', CFG.mode === 'snapshot' ? 'Momentaufnahme vom ' + fDayTime(tms(snapshot.generated) || m.latest) : 'live aus dem Sheet, Prüfung alle ' + CFG.refreshMinutes + ' Minuten');
+    row('Neuester Messwert', fDayTime(m.latest));
+    var ls = tms(m.sync.last_success_utc);
+    if (isFinite(ls)) row('Letzte Synchronisierung', fDayTime(ls) + (m.sync.state ? ' · Status „' + m.sync.state + '“' : ''));
+    if (isFinite(m.firstSeen)) row('Aufzeichnung seit', fDayTime(m.firstSeen));
+    var counts = null;
+    try { counts = JSON.parse(m.sync.row_counts_json || 'null'); } catch (e) { counts = null; }
+    if (counts && typeof counts === 'object') {
+      var parts = [];
+      [['temperatures', 'Temperaturen'], ['humidity', 'Luftfeuchte'], ['valves', 'Ventile'], ['outdoor', 'Außen']].forEach(function (p) { if (counts[p[0]] != null) parts.push(p[1] + ' ' + nfInt.format(+counts[p[0]])); });
+      if (parts.length) row('Zeilen im Sheet', parts.join(' · '));
+    }
+    row('Erfasst', m.rooms.length + ' Raumregler · ' + m.actuators.length + ' Stellantriebe');
+    var rk = state.model.range;
+    row('Zeitraum', rk.label + (rk.hourly ? ' (ältere Werte stündlich, letzte 24 Std alle 10 Min)' : ' (alle 10 Min)'));
+    var cb = [];
+    Object.keys(m.code).forEach(function (cat) { Object.keys(m.code[cat]).sort(function (a, b) { return a - b; }).forEach(function (c) { cb.push([cat === 'temperature_mode' ? 'Modus' : cat === 'operating_mode' ? 'Betriebsart' : cat, c, m.code[cat][c].label, m.code[cat][c].meaning]); }); });
+    var host = $('codebook-table');
+    if (cb.length) table(host, [['Feld'], ['Code', 1], ['Bezeichnung'], ['Bedeutung']], cb); else host.hidden = true;
+    var tbl = host.querySelector('table'); if (tbl) Array.prototype.forEach.call(tbl.querySelectorAll('td:last-child'), function (td) { td.style.whiteSpace = 'normal'; td.style.minWidth = '220px'; });
+  }
+
+  /* ---------- Laden & Zeichnen ---------- */
+  function renderAll() {
+    var m = state.model; if (!m) return;
+    readPalette();
+    if (!state.room || !m.byUuid.get(state.room)) {
+      var pref = m.rooms.filter(function (r) { return r.name === 'EG-Wohnen'; })[0] || m.rooms[0];
+      state.room = pref ? pref.uuid : null;
+    }
+    renderStatus(); renderRangeButtons(); renderBanner();
+    renderKPIs(m); renderHouse(m); fillRoomSelect(m); renderDetail(m); renderHeatmaps(m); renderFacts(m);
+    ['house', 'detail', 'dev', 'hum', 'valve'].forEach(function (w) { if (!$(w + '-table').hidden) renderTable(w); });
+  }
+  var loadSeq = 0;
+  function load(force) {
+    var seq = ++loadSeq;
+    state.loading = true; $('rk').classList.add('is-loading');
+    var refs = ['sync_status', 'controllers', 'actuators', 'codebook'];
+    return Promise.all(refs.map(function (t) { return query(t); })).then(function (r) {
+      var raw = { sync_status: r[0], controllers: r[1], actuators: r[2], codebook: r[3] };
+      var sync = {}; raw.sync_status.forEach(function (x) { sync[x.key] = x.value; });
+      var latest = tms(sync.latest_measurement_utc);
+      if (!isFinite(latest)) {
+        var ls = raw.controllers.map(function (c) { return tms(c.last_seen_utc); }).filter(isFinite);
+        latest = ls.length ? Math.max.apply(null, ls) : Date.now();
+      }
+      var range = makeRange(state.rangeKey, latest);
+      return Promise.all(['temperatures', 'humidity', 'valves', 'outdoor'].map(function (t) { return query(t, range); })).then(function (f) {
+        raw.temperatures = f[0]; raw.humidity = f[1]; raw.valves = f[2]; raw.outdoor = f[3];
+        return buildModel(raw, range);
+      });
+    }).then(function (m) {
+      if (seq !== loadSeq) return;
+      state.model = m; state.error = null; state.lastFetch = Date.now();
+      renderAll();
+    }).catch(function (e) {
+      if (seq !== loadSeq) return;
+      state.error = (e && e.message) || 'Unbekannter Fehler.';
+      if (/Failed to fetch|NetworkError|Load failed/i.test(state.error)) state.error = 'Keine Verbindung zu Google Sheets.';
+      renderStatus(); renderBanner();
+      if (!state.model) { clear($('house')); $('house').appendChild(el('p', { class: 'empty' }, 'Keine Daten.')); }
+    }).then(function () {
+      if (seq !== loadSeq) return;
+      state.loading = false; $('rk').classList.remove('is-loading');
+    });
+  }
+  function checkForNew() {
+    if (CFG.mode !== 'live' || state.loading || document.visibilityState !== 'visible') return;
+    query('sync_status').then(function (rows) {
+      var v = null; rows.forEach(function (r) { if (r.key === 'latest_measurement_utc') v = r.value; });
+      var t = tms(v);
+      if (!state.model || (isFinite(t) && t !== state.model.latest) || state.error) load(false);
+      else { state.lastFetch = Date.now(); renderStatus(); }
+    }).catch(function () { /* nächster Versuch beim nächsten Intervall */ });
+  }
+
+  $('range').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-range]'); if (!b || b.dataset.range === state.rangeKey) return;
+    state.rangeKey = b.dataset.range; store.set('range', state.rangeKey);
+    renderRangeButtons();
+    load(true);
+  });
+  $('range').addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    var keys = Object.keys(RANGES), i = keys.indexOf(state.rangeKey) + (e.key === 'ArrowRight' ? 1 : -1);
+    if (i < 0 || i >= keys.length) return;
+    e.preventDefault();
+    var b = $('range').querySelector('[data-range="' + keys[i] + '"]'); b.focus(); b.click();
+  });
+  $('room-select').addEventListener('change', function (e) { selectRoom(e.target.value, false); });
+
+  var lastW = 0, rafId = 0;
+  function onResize() {
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function () {
+      var w = $('rk').clientWidth; if (w === lastW || !state.model) return; lastW = w;
+      drawHouseSparks(); renderKPIs(state.model); renderDetail(state.model); renderHeatmaps(state.model);
+    });
+  }
+  if (window.ResizeObserver) new ResizeObserver(onResize).observe($('rk')); else window.addEventListener('resize', onResize);
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    var rerender = function () { if (state.model) renderAll(); };
+    if (mq.addEventListener) mq.addEventListener('change', rerender);
+    new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+  setInterval(function () { if (state.model) renderStatus(); }, 30e3);
+  if (CFG.mode === 'live') {
+    setInterval(checkForNew, CFG.refreshMinutes * 6e4);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && Date.now() - state.lastFetch > 6e4) checkForNew(); });
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (state.model) renderAll(); });
+  lastW = $('rk').clientWidth;
+  load(true);
+})();
+</script>
